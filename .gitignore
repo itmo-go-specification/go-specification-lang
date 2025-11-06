@@ -3,3 +3,6 @@ bin/
 vendor/
 *.log
 *.out
+
+generated
+.vscode

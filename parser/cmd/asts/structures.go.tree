@@ -1,0 +1,104 @@
+*ast.File: Name=sources, Imports=4, Decls=4
+  *ast.Ident: Name=sources
+  *ast.GenDecl: Tok=import, Specs=4
+    *ast.ImportSpec: Path="fmt"
+      *ast.BasicLit: Kind=STRING, Value="fmt"
+    *ast.ImportSpec: Path="log"
+      *ast.BasicLit: Kind=STRING, Value="log"
+    *ast.ImportSpec: Path="math/rand"
+      *ast.BasicLit: Kind=STRING, Value="math/rand"
+    *ast.ImportSpec: Path="time"
+      *ast.BasicLit: Kind=STRING, Value="time"
+  *ast.GenDecl: Tok=type, Specs=1
+    *ast.TypeSpec: Name=MyType
+      *ast.Ident: Name=MyType
+      *ast.StructType
+        *ast.FieldList
+          *ast.Field
+            *ast.Ident: Name=Num
+            *ast.Ident: Name=int
+          *ast.Field
+            *ast.Ident: Name=Str
+            *ast.Ident: Name=string
+  *ast.FuncDecl: Name=createMyTypeWithRandom
+    *ast.Ident: Name=createMyTypeWithRandom
+    *ast.FuncType
+      *ast.FieldList
+      *ast.FieldList
+        *ast.Field
+          *ast.Ident: Name=MyType
+        *ast.Field
+          *ast.Ident: Name=error
+    *ast.BlockStmt
+      *ast.AssignStmt
+        *ast.Ident: Name=randInt
+        *ast.CallExpr
+          *ast.SelectorExpr
+            *ast.Ident: Name=rand
+            *ast.Ident: Name=Intn
+          *ast.BasicLit: Kind=INT, Value=100
+      *ast.IfStmt
+        *ast.BinaryExpr
+          *ast.Ident: Name=randInt
+          *ast.BasicLit: Kind=INT, Value=50
+        *ast.BlockStmt
+          *ast.ReturnStmt
+            *ast.CompositeLit
+              *ast.Ident: Name=MyType
+            *ast.CallExpr
+              *ast.SelectorExpr
+                *ast.Ident: Name=fmt
+                *ast.Ident: Name=Errorf
+              *ast.BasicLit: Kind=STRING, Value="panic"
+      *ast.ReturnStmt
+        *ast.CompositeLit
+          *ast.Ident: Name=MyType
+          *ast.KeyValueExpr
+            *ast.Ident: Name=Num
+            *ast.Ident: Name=randInt
+          *ast.KeyValueExpr
+            *ast.Ident: Name=Str
+            *ast.BasicLit: Kind=STRING, Value="Test"
+        *ast.Ident: Name=nil
+  *ast.FuncDecl: Name=main
+    *ast.Ident: Name=main
+    *ast.FuncType
+      *ast.FieldList
+    *ast.BlockStmt
+      *ast.ExprStmt
+        *ast.CallExpr
+          *ast.SelectorExpr
+            *ast.Ident: Name=rand
+            *ast.Ident: Name=Seed
+          *ast.CallExpr
+            *ast.SelectorExpr
+              *ast.CallExpr
+                *ast.SelectorExpr
+                  *ast.Ident: Name=time
+                  *ast.Ident: Name=Now
+              *ast.Ident: Name=UnixNano
+      *ast.AssignStmt
+        *ast.Ident: Name=a
+        *ast.Ident: Name=err
+        *ast.CallExpr
+          *ast.Ident: Name=createMyTypeWithRandom
+      *ast.IfStmt
+        *ast.BinaryExpr
+          *ast.Ident: Name=err
+          *ast.Ident: Name=nil
+        *ast.BlockStmt
+          *ast.ExprStmt
+            *ast.CallExpr
+              *ast.SelectorExpr
+                *ast.Ident: Name=log
+                *ast.Ident: Name=Println
+              *ast.Ident: Name=err
+        *ast.BlockStmt
+          *ast.ExprStmt
+            *ast.CallExpr
+              *ast.SelectorExpr
+                *ast.Ident: Name=log
+                *ast.Ident: Name=Println
+              *ast.SelectorExpr
+                *ast.Ident: Name=a
+                *ast.Ident: Name=Num

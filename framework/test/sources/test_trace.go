@@ -1,3 +1,5 @@
+//go:build exclude
+
 package sources
 
 import "fmt"
@@ -17,12 +19,12 @@ func calculate(a, b int) int {
 
 func main() {
 	fmt.Println("Starting program")
-	
+
 	result := process("test")
 	fmt.Println(result)
-	
+
 	sum := calculate(5, 10)
 	fmt.Printf("Sum: %d\n", sum)
-	
+
 	fmt.Println("Program finished")
 }

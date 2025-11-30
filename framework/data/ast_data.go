@@ -16,8 +16,8 @@ func NewAdditionalInfo() *AdditionalInfo {
 }
 
 type ASTData struct {
-	File    *ast.File
-	FileSet *token.FileSet
+	File     *ast.File
+	FileSet  *token.FileSet
 	NodeInfo map[ast.Node]*AdditionalInfo
 }
 

@@ -9,7 +9,7 @@ import (
 )
 
 type ASTSnapshot struct {
-	source  []byte
+	source   []byte
 	nodeInfo map[ast.Node]*AdditionalInfo
 }
 

@@ -11,7 +11,6 @@ type ASTPrinter struct {
 	out *os.File
 }
 
-
 func NewASTPrinter(out *os.File) *ASTPrinter {
 	return &ASTPrinter{
 		out: out,

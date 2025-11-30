@@ -19,7 +19,7 @@ func NewGenerator(astData *data.ASTData) *Generator {
 
 func (g *Generator) Generate() ([]byte, error) {
 	var buf bytes.Buffer
-	
+
 	err := printer.Fprint(&buf, g.astData.FileSet, g.astData.File)
 	if err != nil {
 		return nil, err

@@ -4,4 +4,5 @@ use (
 	./ir
 	./parser
 	./plugin
+	./framework
 )

@@ -5,6 +5,8 @@ import (
 
 	"gpma/framework/codegen"
 	"gpma/framework/data"
+	"gpma/framework/gosl/bind"
+	"gpma/framework/gosl/front"
 	"gpma/framework/parser"
 	"gpma/framework/plugin"
 )
@@ -67,6 +69,14 @@ func (f *Framework) ProcessFile(filepath string) (*Result, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse file: %w", err)
 	}
+
+	// Collecting commnet block from astData
+	blocks := front.CollectRawBlocks(astData.FileSet, astData.File, "EMPTY")
+	// Parsing GOSL -> creating SpecModule
+	spec, err := front.BuildSpecModule(blocks)
+
+	// binding ast and specifications together
+	astData, err = bind.Bind(astData, spec)
 
 	runner := plugin.NewPluginRunner(f.plugins)
 	runnerResult, err := runner.Run(astData)

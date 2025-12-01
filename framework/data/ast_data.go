@@ -3,10 +3,14 @@ package data
 import (
 	"go/ast"
 	"go/token"
+	specir "gpma/framework/gosl/ir"
 )
 
+// For now gpma ir supports only function contracts and loop specs
 type AdditionalInfo struct {
-	Data map[string]interface{}
+	Data         map[string]interface{}
+	FuncContract *specir.FuncContract
+	LoopSpec     *specir.LoopSpec
 }
 
 func NewAdditionalInfo() *AdditionalInfo {
@@ -18,26 +22,27 @@ func NewAdditionalInfo() *AdditionalInfo {
 type ASTData struct {
 	File    *ast.File
 	FileSet *token.FileSet
-	NodeInfo map[ast.Node]*AdditionalInfo
+	Data    map[ast.Node]*AdditionalInfo // go ast -> Spec bindings
+	Spec    *specir.SpecModule           // all gosl context
 }
 
 func NewASTData(file *ast.File, fset *token.FileSet) *ASTData {
 	return &ASTData{
-		File:     file,
-		FileSet:  fset,
-		NodeInfo: make(map[ast.Node]*AdditionalInfo),
+		File:    file,
+		FileSet: fset,
+		Data:    make(map[ast.Node]*AdditionalInfo),
 	}
 }
 
 func (d *ASTData) GetNodeInfo(node ast.Node) *AdditionalInfo {
-	if info, exists := d.NodeInfo[node]; exists {
+	if info, exists := d.Data[node]; exists {
 		return info
 	}
 	info := NewAdditionalInfo()
-	d.NodeInfo[node] = info
+	d.Data[node] = info
 	return info
 }
 
 func (d *ASTData) SetNodeInfo(node ast.Node, info *AdditionalInfo) {
-	d.NodeInfo[node] = info
+	d.Data[node] = info
 }

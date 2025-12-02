@@ -20,29 +20,29 @@ func NewAdditionalInfo() *AdditionalInfo {
 }
 
 type ASTData struct {
-	File    *ast.File
-	FileSet *token.FileSet
-	Data    map[ast.Node]*AdditionalInfo // go ast -> Spec bindings
-	Spec    *specir.SpecModule           // all gosl context
+	File     *ast.File
+	FileSet  *token.FileSet
+	NodeInfo map[ast.Node]*AdditionalInfo // go ast -> Spec bindings
+	Spec     *specir.SpecModule           // all gosl context
 }
 
 func NewASTData(file *ast.File, fset *token.FileSet) *ASTData {
 	return &ASTData{
-		File:    file,
-		FileSet: fset,
-		Data:    make(map[ast.Node]*AdditionalInfo),
+		File:     file,
+		FileSet:  fset,
+		NodeInfo: make(map[ast.Node]*AdditionalInfo),
 	}
 }
 
 func (d *ASTData) GetNodeInfo(node ast.Node) *AdditionalInfo {
-	if info, exists := d.Data[node]; exists {
+	if info, exists := d.NodeInfo[node]; exists {
 		return info
 	}
 	info := NewAdditionalInfo()
-	d.Data[node] = info
+	d.NodeInfo[node] = info
 	return info
 }
 
 func (d *ASTData) SetNodeInfo(node ast.Node, info *AdditionalInfo) {
-	d.Data[node] = info
+	d.NodeInfo[node] = info
 }

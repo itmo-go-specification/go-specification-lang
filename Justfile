@@ -1,5 +1,8 @@
 container := "gpma-builder"
 
+@fmt:
+    gofmt -w .
+
 @build-image:
     docker build -t {{ container }} .
 

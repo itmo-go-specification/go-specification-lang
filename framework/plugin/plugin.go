@@ -5,9 +5,9 @@ import (
 )
 
 type PluginResult struct {
-	ASTModified  bool
-	MapModified  bool
-	Error        error
+	ASTModified bool
+	MapModified bool
+	Error       error
 }
 
 func NewPluginResult() *PluginResult {

@@ -2,22 +2,17 @@
 
 GENDIR=./generated
 
-all: gosl_parser build
+all: build
 
-build:
+build: gosl_parser
 	@echo "Building framework..."
 	@mkdir -p build
 	@go build -o build/framework ./cmd/main.go
 	@echo "Build complete: build/framework"
 
-gosl_parser:
+gosl_parser: 
 	@echo "Building antlr step..."
-	@cd ./gosl/front && if [ ! -d "${GENDIR}" ]; then \
-		echo "Antlr parser not generated. Generation started"; \
-		antlr4 -Dlanguage=Go -package acsl -o ${GENDIR} ./grammar/ACSL.g4; \
-	else \
-		echo "Antlr parser already generated. Skip generation step"; \
-	fi
+	@go generate ./...
 	@echo "Finished building antlr parser"
 
 clean:

@@ -34,6 +34,13 @@ func NewASTData(file *ast.File, fset *token.FileSet) *ASTData {
 	}
 }
 
+func (d *ASTData) TryGetNodeInfo(node ast.Node) *AdditionalInfo {
+	if info, exists := d.NodeInfo[node]; exists {
+		return info
+	}
+	return nil
+}
+
 func (d *ASTData) GetNodeInfo(node ast.Node) *AdditionalInfo {
 	if info, exists := d.NodeInfo[node]; exists {
 		return info

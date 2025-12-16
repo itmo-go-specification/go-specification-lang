@@ -3,7 +3,7 @@ package front
 import (
 	"encoding/json"
 	"fmt"
-	acsl "gpma/framework/gosl/front/generated/grammar"
+	acsl "gpma/framework/gosl/front/generated/grammar/acsl"
 	"os"
 	"path/filepath"
 	"regexp"

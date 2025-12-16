@@ -7,7 +7,6 @@ import (
 	"path/filepath"
 	"strconv"
 
-	acsl "gpma/framework/gosl/front/generated/grammar"
 	specir "gpma/framework/gosl/ir"
 
 	"github.com/antlr4-go/antlr/v4"

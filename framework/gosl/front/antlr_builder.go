@@ -11,6 +11,8 @@ import (
 	specir "gpma/framework/gosl/ir"
 
 	"github.com/antlr4-go/antlr/v4"
+
+	acsl "gpma/framework/gosl/front/generated/grammar/acsl"
 )
 
 func buildSpecModuleACSL_ANTLR(spec *specir.SpecModule, blocks []RawSpecBlock) (*specir.SpecModule, error) {

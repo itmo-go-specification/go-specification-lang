@@ -79,4 +79,5 @@ jobs:
 
       - name: Run tests with coverage
         run: |
+          go generate work
           go test work -v

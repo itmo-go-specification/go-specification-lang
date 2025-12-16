@@ -14,7 +14,7 @@ gosl_parser:
 	@echo "Building antlr step..."
 	@cd ./gosl/front && if [ ! -d "${GENDIR}" ]; then \
 		echo "Antlr parser not generated. Generation started"; \
-		antlr4 -Dlanguage=Go -package acsl -o ${GENDIR} ./grammar/ACSL.g4; \
+		antlr4 -Dlanguage=Go -visitor -package acsl -o ${GENDIR} ./grammar/ACSL.g4; \
 	else \
 		echo "Antlr parser already generated. Skip generation step"; \
 	fi

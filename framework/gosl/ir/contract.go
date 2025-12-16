@@ -4,6 +4,7 @@ package specir
 // ensures bound: 0 <= \result <= n;
 // Label: "bound"
 // Expr: "0 <= \result <= n"
+
 type NamedPredicate struct {
 	Label string
 	Expr  Expr
@@ -38,7 +39,11 @@ type FuncContract struct {
 
 	// funtion receiver. RecvTypeName = "" if func f(...)
 	RecvTypeName string
-	Span         Span
+
+	// Positions
+	Span     Span
+	StartPos Position
+	EndPos   Position
 
 	Requires []NamedPredicate
 	Ensures  []NamedPredicate
@@ -52,7 +57,9 @@ type FuncContract struct {
 // loop invariant bound: 0 <= i <= n;
 // loop invariant count: counted == Count(a, i, v);
 type LoopSpec struct {
-	Span Span
+	Span     Span
+	StartPos Position
+	EndPos   Position
 
 	// Optional: parent function name
 	ParentFuncName string

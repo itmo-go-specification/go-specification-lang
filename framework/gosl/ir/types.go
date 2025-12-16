@@ -16,6 +16,6 @@ type TypeExpr struct {
 	Kind TypeKind
 
 	// For TypeCustom. Ex: Name == "rounding_mode"
-	// For not TypeCuston. Ex: Name can be empty
+	// For not TypeCustom. Ex: Name can be empty
 	Name string
 }

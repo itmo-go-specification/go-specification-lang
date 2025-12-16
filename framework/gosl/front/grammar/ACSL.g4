@@ -21,6 +21,7 @@ import C;
 
 // own additions --- start
 @lexer::members {
+  var skipCommentSymbols bool;
 }
 // own additions --- end
 
@@ -465,15 +466,17 @@ behavior_body_stmt
 
 // own additions --- start
 AcslCommentStart
-    : '/*@' {}
+    : '/*@' {skipCommentSymbols = true;}
     ;
 
 AcslCommentEnd
-    : '*/' {}
+    : '*/' {skipCommentSymbols = false;}
     ;
 
 AcslCommentIntermediate
-    : '@' {   }
+    : '@' { if skipCommentSymbols {
+				l.Skip()
+			 }  }
     ;
 
 acsl_comment_contract

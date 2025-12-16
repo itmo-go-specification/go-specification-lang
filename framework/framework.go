@@ -71,7 +71,7 @@ func (f *Framework) ProcessFile(filepath string) (*Result, error) {
 	}
 
 	// Collecting commnet block from astData
-	blocks := front.CollectRawBlocks(astData.FileSet, astData.File, "EMPTY")
+	blocks := front.CollectRawBlocks(astData.FileSet, astData.File, astData.FileSet.File(astData.File.Pos()).Name())
 	// Parsing GOSL -> creating SpecModule
 	spec, err := front.BuildSpecModule(blocks)
 

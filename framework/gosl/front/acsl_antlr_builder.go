@@ -1,7 +1,8 @@
 package front
 
 import (
-	acsl "gpma/framework/gosl/front/generated/grammar"
+	acsl "gpma/framework/gosl/front/generated/grammar/acsl"
+
 	specir "gpma/framework/gosl/ir"
 
 	"github.com/antlr4-go/antlr/v4"

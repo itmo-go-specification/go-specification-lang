@@ -2,7 +2,7 @@ package front
 
 import (
 	"fmt"
-	acsl "gpma/framework/gosl/front/generated/grammar"
+	acsl "gpma/framework/gosl/front/generated/grammar/acsl"
 	specir "gpma/framework/gosl/ir"
 	"strings"
 

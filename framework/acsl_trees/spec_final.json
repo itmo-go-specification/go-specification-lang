@@ -1,0 +1,55 @@
+{
+  "LogicDecls": {},
+  "FuncContracts": [
+    {
+      "funcName": "",
+      "span": {
+        "File": "./test/notation/count.go",
+        "Start": 18,
+        "End": 76
+      },
+      "ensures": [
+        {
+          "label": "",
+          "expr": {
+            "kind": "binary",
+            "span": {
+              "File": "./test/notation/count.go",
+              "Start": 48,
+              "End": 72
+            },
+            "binaryOp": 7,
+            "left": {
+              "kind": "var",
+              "span": {
+                "File": "./test/notation/count.go",
+                "Start": 48,
+                "End": 67
+              },
+              "name": "bound:0\u003c=\\result"
+            },
+            "right": {
+              "kind": "var",
+              "span": {
+                "File": "./test/notation/count.go",
+                "Start": 71,
+                "End": 72
+              },
+              "name": "n"
+            }
+          },
+          "span": {
+            "File": "./test/notation/count.go",
+            "Start": 48,
+            "End": 72
+          }
+        }
+      ],
+      "assigns": {
+        "Kind": 0,
+        "Vars": null
+      }
+    }
+  ],
+  "LoopSpecs": null
+}

@@ -3,7 +3,7 @@ package notation
 /*@
 requires (mode == \true) || (mode == \false);
 assigns \nothing;
-ensures (!(mode == 0) || (\result == x)) && (!(mode == 1) || (\result == -x));
+ensures ((!(mode == 0)) || (\result == x)) && ((!(mode == 1)) || (\result == -x));
 */
 func mayNegate(x int, mode bool) int {
 	if mode {
@@ -17,4 +17,3 @@ func mayNegate(x int, mode bool) int {
 // p -> q == !p || q
 // (mode == 0 ==> \result == x) && (mode == 1 ==> \result == -x);
 // (!(mode == 0) || (\result == x)) && (!(mode == 1) || (\result == -x))
-

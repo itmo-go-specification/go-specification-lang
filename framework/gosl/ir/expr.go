@@ -18,9 +18,10 @@ const (
 	LitInteger
 	LitReal
 	LitString
+	LitFloat
 )
 
-// ExprLiteral - \true, \false, числа, строки.
+// ExprLiteral - \true, \false, numbers, strings
 type ExprLiteral struct {
 	BaseExpr
 	Kind LiteralKind
@@ -28,6 +29,7 @@ type ExprLiteral struct {
 	Int  int64
 	Real float64
 	Str  string
+	Float float64
 }
 
 func (*ExprLiteral) exprNode() {}

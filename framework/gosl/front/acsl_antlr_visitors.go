@@ -3,7 +3,9 @@ package front
 import (
 	"fmt"
 	acsl "gpma/framework/gosl/front/generated/grammar/acsl"
+	grammar "gpma/framework/gosl/front/generated/grammar/acsl"
 	specir "gpma/framework/gosl/ir"
+	"strconv"
 	"strings"
 
 	"github.com/antlr4-go/antlr/v4"
@@ -230,10 +232,11 @@ func unique(xs []string) []string {
 
 // specir.Expr
 func (b *ACSLBuilder) predToExpr(p acsl.IPredContext) specir.Expr {
-	fmt.Println("predToExpr text:", p.GetText())
+	fmt.Printf("predToExpr text:%s, type:%T\n", p.GetText(), p)
     if p == nil {
         return nil
     }
+
     v := b.Visit(p)
     if e, ok := v.(specir.Expr); ok {
         return e
@@ -243,6 +246,7 @@ func (b *ACSLBuilder) predToExpr(p acsl.IPredContext) specir.Expr {
         return np.Expr
     }
     // fallback
+    fmt.Println("predToExpr fallback")
     return &specir.ExprVar{BaseExpr: specir.BaseExpr{Span: b.blockSpan(p)}, Name: p.GetText()}
 }
 
@@ -264,6 +268,23 @@ func (b *ACSLBuilder) VisitLogical_false_pred(ctx *acsl.Logical_false_predContex
     }
 }
 
+// binary op
+func (b *ACSLBuilder) VisitBinary_op_term(ctx *acsl.Binary_op_termContext) interface{} {
+    fmt.Println("VisitBinary_op_term text:", ctx.GetText())
+    left := b.termToExpr(ctx.Term(0))
+	right := b.termToExpr(ctx.Term(1))
+
+	opText := ctx.Bin_op().GetText()
+	op := relOpToBinary(opText)
+
+	return &specir.ExprBinary{
+		BaseExpr: specir.BaseExpr{Span: b.blockSpan(ctx)},
+		Op:       op,
+		Left:     left,
+		Right:    right,
+	}
+}
+
 // a <= b, a == b, ...
 func (b *ACSLBuilder) VisitComparison_pred(ctx *acsl.Comparison_predContext) interface{} {
     fmt.Println("VisitComparison_pred text:", ctx.GetText())
@@ -276,7 +297,7 @@ func (b *ACSLBuilder) VisitComparison_pred(ctx *acsl.Comparison_predContext) int
 
     left := b.termToExpr(terms[0])
     right := b.termToExpr(terms[1])
-
+    fmt.Printf("VisitComparison_pred l: %T r: %T\n", terms[0], terms[1])
     op := relOpToBinary(ops[0].GetText())
     return &specir.ExprBinary{
         BaseExpr: specir.BaseExpr{Span: b.blockSpan(ctx)},
@@ -414,7 +435,143 @@ func (b *ACSLBuilder) VisitResult_term(ctx *acsl.Result_termContext) interface{}
     return &specir.ExprResult{BaseExpr: specir.BaseExpr{Span: b.blockSpan(ctx)}}
 }
 
-func (b *ACSLBuilder) VisitParentheses_term(ctx *acsl.Parentheses_termContext) interface{} {
-	fmt.Println("VisitParentheses_term text:", ctx.GetText())
-    return b.termToExpr(ctx.Term())
+func (b *ACSLBuilder) VisitParentheses_pred(ctx *acsl.Parentheses_predContext) interface{} {
+	fmt.Println("VisitParentheses_pred text:", ctx.GetText())
+	return b.predToExpr(ctx.Pred())
+}
+
+func (b *ACSLBuilder) VisitUnary_op_term(ctx *acsl.Unary_op_termContext) interface{} {
+    fmt.Printf("VisitUnary_op_term text:%s, type:%T\n", ctx.GetText(), ctx.Term())
+	opCtx := ctx.Unary_op()
+	inner := b.termToExpr(ctx.Term())
+
+	var op specir.UnaryOp
+
+	switch opCtx.GetText() {
+	case "!":
+		op = specir.UnaryNot
+
+	case "-":
+		op = specir.UnaryMinus
+
+	case "+":
+		op = specir.UnaryPlus 
+
+	default:
+		// fallback
+		return &specir.ExprVar{
+			BaseExpr: specir.BaseExpr{Span: b.blockSpan(ctx)},
+			Name:     ctx.GetText(),
+		}
+	}
+
+	return &specir.ExprUnary{
+		BaseExpr: specir.BaseExpr{Span: b.blockSpan(ctx)},
+		Op:       op,
+		Expr:     inner,
+	}
+}
+
+
+
+func (b *ACSLBuilder) VisitLiteral_term(ctx *grammar.Literal_termContext) interface{} {
+	if ctx == nil {
+		return nil
+	}
+
+	lit := ctx.Literal()
+
+    fmt.Printf("VisitLiteral_term text:%s, type:%T\n", ctx.GetText(), lit)
+	if lit == nil {
+		// fallback
+		return &specir.ExprVar{
+			BaseExpr: specir.BaseExpr{Span: b.blockSpan(ctx)},
+			Name:     ctx.GetText(),
+		}
+	}
+
+	switch x := lit.(type) {
+
+	case *grammar.True_constantContext:
+		return &specir.ExprLiteral{
+			BaseExpr: specir.BaseExpr{Span: b.blockSpan(ctx)},
+			Kind:     specir.LitBool,
+			Bool:     true,
+		}
+
+	case *grammar.False_constantContext:
+		return &specir.ExprLiteral{
+			BaseExpr: specir.BaseExpr{Span: b.blockSpan(ctx)},
+			Kind:     specir.LitBool,
+			Bool:     false,
+		}
+
+	case *grammar.String_constantContext:
+		raw := ""
+		if s := x.String_(); s != nil {
+			raw = s.GetText()
+		} else {
+			raw = x.GetText()
+		}
+
+		// removing ".."
+		unq, err := strconv.Unquote(raw)
+		if err != nil {
+			unq = raw // fallback
+		}
+
+		return &specir.ExprLiteral{
+			BaseExpr: specir.BaseExpr{Span: b.blockSpan(ctx)},
+			Kind:     specir.LitString,
+			Str:      unq,
+		}
+
+	case *grammar.Trivial_constantContext:
+		// Constant()
+		raw := ""
+		if c := x.Constant(); c != nil {
+			raw = c.GetText()
+		} else {
+			raw = x.GetText()
+		}
+
+		// int (base=0)
+		if i, err := strconv.ParseInt(raw, 0, 64); err == nil {
+			return &specir.ExprLiteral{
+				BaseExpr: specir.BaseExpr{Span: b.blockSpan(ctx)},
+				Kind:     specir.LitInteger,
+				Int:      i,
+			}
+		}
+
+		// float
+		if f, err := strconv.ParseFloat(raw, 64); err == nil {
+			return &specir.ExprLiteral{
+				BaseExpr: specir.BaseExpr{Span: b.blockSpan(ctx)},
+				Kind:     specir.LitFloat,
+				Float:    f,
+			}
+		}
+
+		// fallback
+		return &specir.ExprVar{
+			BaseExpr: specir.BaseExpr{Span: b.blockSpan(ctx)},
+			Name:     raw,
+		}
+
+	default:
+		// TODO: extra literals
+		return &specir.ExprVar{
+			BaseExpr: specir.BaseExpr{Span: b.blockSpan(ctx)},
+			Name:     lit.(antlr.ParserRuleContext).GetText(),
+		}
+	}
+}
+
+func (b *ACSLBuilder) VisitNegation_pred(ctx *acsl.Negation_predContext) interface{} {
+	return &specir.ExprUnary{
+		BaseExpr: specir.BaseExpr{Span: b.blockSpan(ctx)},
+		Op:       specir.UnaryNot,
+		Expr:     b.predToExpr(ctx.Pred()),
+	}
 }

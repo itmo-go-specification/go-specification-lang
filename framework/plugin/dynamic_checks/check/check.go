@@ -5,7 +5,7 @@ import (
 	"runtime"
 )
 
-func check(condition bool, messages ...any) {
+func Check(condition bool, messages ...any) {
 	if !condition {
 		_, file, line, ok := runtime.Caller(1)
 		if !ok {

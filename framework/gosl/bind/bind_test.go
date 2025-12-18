@@ -8,12 +8,11 @@ import (
 	"testing"
 )
 
-
 func TestBindFuncContracts(t *testing.T) {
 	sourcesDir := "../../test/notation"
 
 	filename := "count.go"
-	t.Run(filename, func (t *testing.T) {
+	t.Run(filename, func(t *testing.T) {
 		p := parser.NewParser()
 		astData, err := p.ParseFile(filepath.Join(sourcesDir, filename))
 
@@ -48,7 +47,7 @@ func TestBindFuncContracts(t *testing.T) {
 	})
 
 	filename = "count_after_var.go"
-	t.Run(filename, func (t *testing.T) {
+	t.Run(filename, func(t *testing.T) {
 		p := parser.NewParser()
 		astData, err := p.ParseFile(filepath.Join(sourcesDir, filename))
 
@@ -78,7 +77,7 @@ func TestBindLoopSpecs(t *testing.T) {
 	sourcesDir := "../../test/notation"
 
 	filename := "lower_bound.go"
-	t.Run(filename, func (t *testing.T) {
+	t.Run(filename, func(t *testing.T) {
 		p := parser.NewParser()
 		astData, err := p.ParseFile(filepath.Join(sourcesDir, filename))
 
@@ -113,7 +112,7 @@ func TestBindLoopSpecs(t *testing.T) {
 	})
 
 	filename = "lower_bound_after_var.go"
-	t.Run(filename, func (t *testing.T) {
+	t.Run(filename, func(t *testing.T) {
 		p := parser.NewParser()
 		astData, err := p.ParseFile(filepath.Join(sourcesDir, filename))
 

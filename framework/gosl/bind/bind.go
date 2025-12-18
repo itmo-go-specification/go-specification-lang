@@ -26,8 +26,8 @@ func Bind(astData *data.ASTData, spec *specir.SpecModule) (*data.ASTData, error)
 			jEnd := astData.FileSet.Position(nodes[j].End())
 			return iEnd.Offset > jEnd.Offset
 		}
-        return iPosition.Offset < jPosition.Offset
-    })
+		return iPosition.Offset < jPosition.Offset
+	})
 
 	// match function contracts
 	for _, specSection := range spec.FuncContracts {
@@ -41,9 +41,9 @@ func Bind(astData *data.ASTData, spec *specir.SpecModule) (*data.ASTData, error)
 		}
 
 		if funcDecl, ok := nodes[nearestNode].(*ast.FuncDecl); ok {
-			astData.NodeInfo[funcDecl] = &data.AdditionalInfo{
-				FuncContract: specSection,
-			}
+			node_info := data.NewAdditionalInfo()
+			node_info.FuncContract = specSection
+			astData.NodeInfo[funcDecl] = node_info
 		} else {
 			return nil, fmt.Errorf("Matched node for spec at %s:%d is not a function", specSection.StartPos.File, specSection.StartPos.Line)
 		}
@@ -61,9 +61,9 @@ func Bind(astData *data.ASTData, spec *specir.SpecModule) (*data.ASTData, error)
 		}
 
 		if forStmt, ok := nodes[nearestNode].(*ast.ForStmt); ok {
-			astData.NodeInfo[forStmt] = &data.AdditionalInfo{
-				LoopSpec: specSection,
-			}
+			node_info := data.NewAdditionalInfo()
+			node_info.LoopSpec = specSection
+			astData.NodeInfo[forStmt] = node_info
 		} else {
 			return nil, fmt.Errorf("Matched node for spec at %s:%d is not a loop", specSection.StartPos.File, specSection.StartPos.Line)
 		}

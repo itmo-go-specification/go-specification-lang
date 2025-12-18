@@ -19,7 +19,8 @@ func processFunctions(astData *data.ASTData, result *plugin.PluginResult) {
 				if processFunc(node, info.FuncContract) {
 					result.WithASTModified()
 				}
-				astData.GetNodeInfo(node).Data["processed"] = true
+				node_info := astData.GetNodeInfo(node)
+				node_info.Data["processed"] = true
 				result.WithMapModified()
 			}
 		}
@@ -60,6 +61,13 @@ func processFunc(funcDecl *ast.FuncDecl, contract *specir.FuncContract) bool {
 		oldInfo.isDeclared = true
 	}
 
+	has_result_var := funcDecl.Type.Results != nil && len(funcDecl.Type.Results.List) == 1
+	// Добавляем объявление __result если есть ensures
+	if has_result_var {
+		resultDecls := createResultDeclaration(funcDecl)
+		newStmts = append(newStmts, resultDecls)
+	}
+
 	// Добавляем проверки ensures (defer)
 	for _, ens := range contract.Ensures {
 		condition := converter.Convert(ens.Expr)
@@ -70,6 +78,11 @@ func processFunc(funcDecl *ast.FuncDecl, contract *specir.FuncContract) bool {
 
 	if len(newStmts) > 0 {
 		funcDecl.Body.List = append(newStmts, funcDecl.Body.List...)
+
+		if has_result_var {
+			replaceReturnsInBlock(funcDecl.Body)
+		}
+
 		return true
 	}
 	return false
@@ -84,7 +97,7 @@ func createCheckCall(condition ast.Expr, prefix, label string) *ast.CallExpr {
 	}
 
 	return &ast.CallExpr{
-		Fun: &ast.Ident{Name: "check"},
+		Fun: &ast.Ident{Name: "checks.Check"},
 		Args: []ast.Expr{
 			condition,
 			&ast.BasicLit{
@@ -92,5 +105,104 @@ func createCheckCall(condition ast.Expr, prefix, label string) *ast.CallExpr {
 				Value: message,
 			},
 		},
+	}
+}
+
+func createResultDeclaration(funcDecl *ast.FuncDecl) ast.Stmt {
+	var resultType ast.Expr
+	if funcDecl.Type.Results != nil && len(funcDecl.Type.Results.List) > 0 {
+		if len(funcDecl.Type.Results.List) == 1 {
+			resultType = funcDecl.Type.Results.List[0].Type
+		} else {
+			// Такой ensures не поддерживается (если возвращается кортеж)
+			resultType = &ast.Ident{Name: "interface{}"} // временное решение
+		}
+	} else {
+		resultType = &ast.Ident{Name: "interface{}"}
+	}
+
+	decl := &ast.DeclStmt{
+		Decl: &ast.GenDecl{
+			Tok: token.VAR,
+			Specs: []ast.Spec{
+				&ast.ValueSpec{
+					Names: []*ast.Ident{{Name: "__result"}},
+					Type:  resultType,
+				},
+			},
+		},
+	}
+	return decl
+}
+
+// replaceReturnsInBlock заменяет все return <expr> в блоке на блоки с присваиванием __result
+func replaceReturnsInBlock(block *ast.BlockStmt) {
+	for i, stmt := range block.List {
+		if ret, ok := stmt.(*ast.ReturnStmt); ok && len(ret.Results) > 0 {
+			block.List[i] = createResultReturnBlock(ret)
+		} else {
+			processNestedBlocks(stmt)
+		}
+	}
+}
+
+func processNestedBlocks(stmt ast.Stmt) {
+	switch s := stmt.(type) {
+	case *ast.IfStmt:
+		if s.Body != nil {
+			replaceReturnsInBlock(s.Body)
+		}
+		if s.Else != nil {
+			if elseBlock, ok := s.Else.(*ast.BlockStmt); ok {
+				replaceReturnsInBlock(elseBlock)
+			} else if elseIf, ok := s.Else.(*ast.IfStmt); ok {
+				processNestedBlocks(elseIf)
+			}
+		}
+	case *ast.ForStmt:
+		if s.Body != nil {
+			replaceReturnsInBlock(s.Body)
+		}
+	case *ast.RangeStmt:
+		if s.Body != nil {
+			replaceReturnsInBlock(s.Body)
+		}
+	case *ast.SwitchStmt:
+		for _, caseBlock := range s.Body.List {
+			if caseClause, ok := caseBlock.(*ast.CaseClause); ok {
+				// caseClause.Body - это []ast.Stmt, преобразуем в BlockStmt для обработки
+				replaceReturnsInBlock(&ast.BlockStmt{List: caseClause.Body})
+			}
+		}
+	case *ast.TypeSwitchStmt:
+		for _, caseBlock := range s.Body.List {
+			if caseClause, ok := caseBlock.(*ast.CaseClause); ok {
+				replaceReturnsInBlock(&ast.BlockStmt{List: caseClause.Body})
+			}
+		}
+	case *ast.SelectStmt:
+		for _, comm := range s.Body.List {
+			if commClause, ok := comm.(*ast.CommClause); ok {
+				replaceReturnsInBlock(&ast.BlockStmt{List: commClause.Body})
+			}
+		}
+	case *ast.BlockStmt:
+		replaceReturnsInBlock(s)
+	}
+}
+
+func createResultReturnBlock(ret *ast.ReturnStmt) *ast.BlockStmt {
+	assign := &ast.AssignStmt{
+		Lhs: []ast.Expr{&ast.Ident{Name: "__result"}},
+		Tok: token.ASSIGN,
+		Rhs: ret.Results,
+	}
+
+	newReturn := &ast.ReturnStmt{
+		Results: []ast.Expr{&ast.Ident{Name: "__result"}},
+	}
+
+	return &ast.BlockStmt{
+		List: []ast.Stmt{assign, newReturn},
 	}
 }

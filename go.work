@@ -2,5 +2,5 @@ go 1.25.2
 
 use (
 	./framework
-	./samples/dynamic_checks/abs
+	./samples/projects/interactive
 )

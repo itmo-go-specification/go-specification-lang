@@ -350,10 +350,15 @@ c_statement
     : assertion c_statement
     ;
 
+// assertion
+//     : '/*@' 'assert' pred ';' '*/'
+//     | '/*@' 'for' id (',' id)* ':' 'assert' pred ';' '*/'
+//     ;
 assertion
-    : '/*@' 'assert' pred ';' '*/'
-    | '/*@' 'for' id (',' id)* ':' 'assert' pred ';' '*/'
+    : AcslCommentStart Newline* 'assert' pred ';' AcslCommentEnd
+    | AcslCommentStart Newline* 'for' id (',' id)* ':' 'assert' pred ';' AcslCommentEnd
     ;
+
 
 
 // allocation.tex
@@ -465,9 +470,15 @@ behavior_body_stmt
     ;
 
 // own additions --- start
+// AcslCommentStart
+//     : '/*@' {skipCommentSymbols = true;}
+//     ;
+
 AcslCommentStart
-    : '/*@' {skipCommentSymbols = true;}
+    : '/*' ( '@' | ('\r'? '\n') [ \t]* '@' ) {skipCommentSymbols = true;}
     ;
+
+
 
 AcslCommentEnd
     : '*/' {skipCommentSymbols = false;}

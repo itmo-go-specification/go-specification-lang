@@ -1,6 +1,7 @@
 package notation
 
-/*@
+/*
+@
 assigns a, b;
 ensures (a == \old(b)) && (b == \old(a));
 */

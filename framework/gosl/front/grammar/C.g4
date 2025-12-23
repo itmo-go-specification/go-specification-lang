@@ -935,11 +935,16 @@ Newline
 
 
 // mmenshchikov: avoid @ comments
+// BlockComment
+//     :   '/*' ~('@') .*? '*/'
+//         -> skip
+//     ;
+
 BlockComment
-    :   '/*' ~('@') .*? '*/'
+    :   '/*' ~('@' | '\r' | '\n') .*? '*/'
         -> skip
     ;
-
+    
 LineComment
     :   '//' ~[\r\n]*
         -> skip

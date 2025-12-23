@@ -1,6 +1,7 @@
 package notation
 
-/*@
+/*
+@
 assigns \nothing;
 ensures (\result == x) || (\result == -x);
 ensures \result >= 0;

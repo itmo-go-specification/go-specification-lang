@@ -1,5 +1,6 @@
 //go:build exclude
-package notation
+
+package contracts
 
 /*
 @

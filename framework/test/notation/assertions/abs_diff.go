@@ -1,0 +1,13 @@
+package assertions
+
+func absDiff(a, b int) int {
+	d := a - b
+
+	/*@ assert d >= 0 || -d >= 0;*/
+	if d < 0 {
+		d = -d
+	}
+
+	/*@ assert d >= 0;*/
+	return d
+}

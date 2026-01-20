@@ -70,3 +70,12 @@ type LoopSpec struct {
 	// loop variant term;
 	Variant Expr
 }
+
+type AssertSpec struct {
+	Span     Span
+	StartPos Position
+	EndPos   Position
+
+	// assertion predicate
+	Assertion NamedPredicate
+}

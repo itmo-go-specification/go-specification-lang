@@ -24,11 +24,11 @@ const (
 // ExprLiteral - \true, \false, numbers, strings
 type ExprLiteral struct {
 	BaseExpr
-	Kind LiteralKind
-	Bool bool
-	Int  int64
-	Real float64
-	Str  string
+	Kind  LiteralKind
+	Bool  bool
+	Int   int64
+	Real  float64
+	Str   string
 	Float float64
 }
 
@@ -63,22 +63,22 @@ func (*ExprUnary) exprNode() {}
 type BinaryOp int
 
 const (
-	OpAdd BinaryOp = iota // +
-	OpSub                 // -
-	OpMul                 // *
-	OpDiv                 // /
-	OpMod                 // %
+	OpAdd BinaryOp = iota // + 0
+	OpSub                 // - 1
+	OpMul                 // * 2
+	OpDiv                 // / 3
+	OpMod                 // % 4
 
-	OpEq  // ==
-	OpNeq // !=
-	OpLe  // <=
-	OpGe  // >=
-	OpLt  // <
-	OpGt  // >
+	OpEq  // == 5
+	OpNeq // != 6
+	OpLe  // <= 7
+	OpGe  // >= 8
+	OpLt  // < 9
+	OpGt  // > 10
 
-	OpAnd // &&
-	OpOr  // ||
-	OpXor // ^^
+	OpAnd // && 11
+	OpOr  // || 12
+	OpXor // ^^ 13
 	// TODO: bitwise operation for go ???
 )
 

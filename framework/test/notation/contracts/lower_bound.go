@@ -1,5 +1,6 @@
 //go:build exclude
-package notation
+
+package contracts
 
 /*
 @
@@ -11,6 +12,8 @@ ensures left: StrictUpperBound(a, 0, \result, v);
 ensures right: LowerBound(a, \result, n, v);
 */
 func lower_bound(a []int, n int, v int) int {
+	var left = 0
+	var right = n
 
 	/*@
 	loop invariant bound: 0 <= left <= right <= n;
@@ -19,8 +22,6 @@ func lower_bound(a []int, n int, v int) int {
 	loop assigns left, right;
 	loop variant right - left;
 	*/
-	var left = 0
-	var right = n
 	for left < right {
 		var middle = left + (right-left)/2
 		if a[middle] < v {

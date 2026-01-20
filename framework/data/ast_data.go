@@ -11,6 +11,7 @@ type AdditionalInfo struct {
 	Data         map[string]interface{}
 	FuncContract *specir.FuncContract
 	LoopSpec     *specir.LoopSpec
+	Asserts      *specir.AssertSpec
 }
 
 func NewAdditionalInfo() *AdditionalInfo {

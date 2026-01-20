@@ -13,8 +13,9 @@ type ACSLBuilder struct {
 	Mod   *specir.SpecModule
 	Block RawSpecBlock
 
-	currFunc *specir.FuncContract
-	currLoop *specir.LoopSpec
+	currFunc   *specir.FuncContract
+	currLoop   *specir.LoopSpec
+	currAssert *specir.AssertSpec
 }
 
 func newACSLBuilder(mod *specir.SpecModule, block RawSpecBlock) *ACSLBuilder {

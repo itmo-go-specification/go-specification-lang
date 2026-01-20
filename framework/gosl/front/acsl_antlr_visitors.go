@@ -1,6 +1,7 @@
 package front
 
 import (
+	"fmt"
 	acsl "gpma/framework/gosl/front/generated/grammar/acsl"
 	grammar "gpma/framework/gosl/front/generated/grammar/acsl"
 	specir "gpma/framework/gosl/ir"
@@ -30,119 +31,8 @@ func (b *ACSLBuilder) VisitAcsl_comment(ctx *acsl.Acsl_commentContext) interface
 	}
 }
 
-func (b *ACSLBuilder) VisitAcsl_comment_contract(ctx *acsl.Acsl_comment_contractContext) interface{} {
-	fc := &specir.FuncContract{
-		FuncName:     "",
-		RecvTypeName: "",
-		Span:         b.blockSpan(ctx),
-	}
-
-	b.Mod.FuncContracts = append(b.Mod.FuncContracts, fc)
-	// opening function contract context
-	b.currFunc = fc
-	// closing function contract context at VisitAcsl_comment_contract ending
-	defer func() { b.currFunc = nil }()
-
-	fcCtx := ctx.Function_contract()
-	if fcCtx != nil {
-		b.Visit(fcCtx)
-	}
-
-	fc.StartPos, fc.EndPos = b.blockPositions(fcCtx)
-
-	log.Debug("[ACSLBuilder] added FuncContract. Text:", ctx.GetText())
-	// log.Debug("[ACSLBuilder] added FuncContract:", fc.FuncName, "Text:", ctx.GetText(), "comment_span:", b.blockSpan(ctx), "contract_span:", b.blockSpan(fcCtx))
-	// log.Debug("contract_start:", fc.StartPos, "contract_end:", fc.EndPos)
-	// log.Debug("block_start:", b.Block.Start, "block_end:", b.Block.End)
-	return nil
-}
-
-func (b *ACSLBuilder) VisitAcsl_comment_loop_annot(ctx *acsl.Acsl_comment_loop_annotContext) interface{} {
-	ls := &specir.LoopSpec{
-		ParentFuncName: "",
-		Span:           b.blockSpan(ctx),
-	}
-
-	b.Mod.LoopSpecs = append(b.Mod.LoopSpecs, ls)
-
-	log.Debug("[ACSLBuilder] added LoopSpec in:", ls.ParentFuncName, "Text:", ctx.GetText())
-	return nil
-}
-
-func (b *ACSLBuilder) VisitAcsl_comment_assertion(ctx *acsl.Acsl_comment_assertionContext) interface{} {
-	log.Debug("[ACSLBuilder] assertion (stub)", "Text:", ctx.GetText())
-	return nil
-}
-
-func (b *ACSLBuilder) VisitAcsl_comment_statement_contract(ctx *acsl.Acsl_comment_statement_contractContext) interface{} {
-	log.Debug("[ACSLBuilder] statement contract (stub)", "Text:", ctx.GetText())
-	return nil
-}
-
-// Function contract: requires/ensures/assigns
-func (b *ACSLBuilder) VisitFunction_contract(ctx *acsl.Function_contractContext) interface{} {
-	log.Debug("VisitFunction_contract text:", ctx.GetText())
-	if b.currFunc == nil || ctx == nil {
-		return nil
-	}
-
-	// requires
-	for _, rc := range ctx.AllRequires_clause() {
-		np, ok := b.Visit(rc).(specir.NamedPredicate)
-		if ok {
-			b.currFunc.Requires = append(b.currFunc.Requires, np)
-		}
-	}
-
-	// simple_clause usually contains ensures/assigns ...
-	for _, sc := range ctx.AllSimple_clause() {
-		b.Visit(sc)
-	}
-
-	return nil
-}
-
-func (b *ACSLBuilder) VisitSimple_clause(ctx *acsl.Simple_clauseContext) interface{} {
-	log.Debug("VisitSimple_clause text:", ctx.GetText())
-	if b.currFunc == nil || ctx == nil {
-		return nil
-	}
-	if ec := ctx.Ensures_clause(); ec != nil {
-		np, ok := b.Visit(ec).(specir.NamedPredicate)
-		if ok {
-			b.currFunc.Ensures = append(b.currFunc.Ensures, np)
-		}
-		return nil
-	}
-	if ac := ctx.Assigns_clause(); ac != nil {
-		ls, ok := b.Visit(ac).(specir.LocationSet)
-		if ok {
-			b.currFunc.Assigns = ls
-		}
-		return nil
-	}
-	return nil
-}
-
-// requires_clause / ensures_clause -> NamedPredicate
-func (b *ACSLBuilder) VisitRequires_clause(ctx *acsl.Requires_clauseContext) interface{} {
-	log.Debug("VisitRequires_clause text:", ctx.GetText())
-	if ctx == nil {
-		return nil
-	}
-	return b.parseNamedPred(ctx.Pred())
-}
-
-func (b *ACSLBuilder) VisitEnsures_clause(ctx *acsl.Ensures_clauseContext) interface{} {
-	log.Debug("VisitEnsures_clause text:", ctx.GetText())
-	if ctx == nil {
-		return nil
-	}
-	return b.parseNamedPred(ctx.Pred())
-}
-
 func (b *ACSLBuilder) parseNamedPred(p acsl.IPredContext) specir.NamedPredicate {
-	log.Debug("parseNamedPred text:", p.GetText())
+	fmt.Printf("parseNamedPred text:%s, type:%T", p.GetText(), p)
 	// default without label
 	np := specir.NamedPredicate{
 		Label: "",
@@ -164,7 +54,7 @@ func (b *ACSLBuilder) parseNamedPred(p acsl.IPredContext) specir.NamedPredicate 
 		np.Expr = b.predToExpr(sn.Pred())
 		return np
 	}
-
+	fmt.Println("parseNamedPred: Simple")
 	// Simple pred
 	np.Expr = b.predToExpr(p)
 	return np
@@ -401,13 +291,29 @@ func (b *ACSLBuilder) VisitInternal_term(ctx *acsl.Internal_termContext) interfa
 	return b.VisitChildren(ctx)
 }
 
+func polyIDName(poly acsl.IPoly_idContext) (string, bool) {
+	if poly == nil {
+		return "", false
+	}
+	idTok := poly.Identifier()
+	if idTok == nil {
+		return "", false
+	}
+	name := idTok.GetText()
+	if name == "" {
+		return "", false
+	}
+	return name, true
+}
+
 func (b *ACSLBuilder) VisitFunc_application_term(ctx *acsl.Func_application_termContext) interface{} {
-	log.Debug("VisitFunc_application_term text:", ctx.GetText())
-	// term ::= ident '(' term (',' term)* ')'
+	fmt.Println("VisitFunc_application_term text:", ctx.GetText())
+
 	name := ""
-	// if ctx.Id() != nil {
-	//     name = ctx.Id().GetText()
-	// }
+	if n, ok := polyIDName(ctx.Poly_id()); ok {
+		name = n
+	}
+
 	argsCtx := ctx.AllTerm()
 	args := make([]specir.Expr, 0, len(argsCtx))
 	for _, a := range argsCtx {

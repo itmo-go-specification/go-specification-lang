@@ -63,6 +63,9 @@ go-specification-lang/
   - `Assigns` - `loop assigns ...;`;
   - `Variant` - `loop variant ...;`.
 
+- `AssertSpec` - спецификация ассерта:
+  - `Assertion` - предикат после ключевого слова `assert`
+
 ---
 
 `framework/gosl/ir/expr.go` - дерево логических выражений.
@@ -185,6 +188,8 @@ parser.ParseFile(fset, filename, nil, parser.ParseComments)
 
 * **Text** - содержимое комментария без `/*@` и `*/`.
 * **Span** - позиция блока в исходнике,
+* **StartPos** - расширенная информация о позиции начала блока. (Должно заменить в будущем **Span**)
+* **EndPos** - расширенная информация о позиции конца блока. (Должно заменить в будущем **Span**)
 * **FuncName** и **RecvTypeName** - если это контракт функции,
 * **ParentFuncName** - если это loop-spec,
 
@@ -220,12 +225,14 @@ type SpecModule struct {
     LogicDecls    map[string]*LogicDecl
     FuncContracts []*FuncContract
     LoopSpecs     []*LoopSpec
+    Asserts       []*AssertSpec
 }
 ```
 
 `SpecModule` содержит в себе весь контекст спецификации для *.go файла. На данном этапе мы хотим держать следующие конструкции:
 * контракты функций (`requires`, `ensures`, `assigns`),
 * спецификации циклов (`loop invariant`, `loop assigns`, `loop variant`).
+* ассерты (`assert`)
 * логические определения, которые используют контракты и спецификации циклов. Это можно расширить или уменьшить в зависимости от сроков для реализации.
 
 Это контекст спецификации. Она ничего не знает про Go AST
@@ -253,6 +260,8 @@ type AdditionalInfo struct {
     Data         map[string]interface{} // оставил для совместимости со старым кодом
     FuncContract *specir.FuncContract   // контракты
     LoopSpec     *specir.LoopSpec       // спецификации циклов
+    Asserts      *specir.AssertSpec     // ассерт
+
 }
 ```
 

@@ -4,14 +4,15 @@ import (
 	"fmt"
 )
 
-/*@
+/*
+@
 requires (f == \true);
 assigns \nothing;
 */
 func check(f bool) {
-    fmt.Printf("Passed\n")
+	fmt.Printf("Passed\n")
 }
 
 func main() {
-    check(false);
+	check(false)
 }

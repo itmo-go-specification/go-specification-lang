@@ -7,7 +7,7 @@ all: build
 build: gosl_parser
 	@echo "Building framework..."
 	@mkdir -p build
-	@go build -o build/framework ./cmd/main.go
+	@go build -o build/framework ./cli/main.go
 	@echo "Build complete: build/framework"
 
 gosl_parser: 

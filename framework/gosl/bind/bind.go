@@ -69,5 +69,23 @@ func Bind(astData *data.ASTData, spec *specir.SpecModule) (*data.ASTData, error)
 		}
 	}
 
+	for _, assertSection := range spec.Asserts {
+		nearestNode, _ := sort.Find(len(nodes), func(i int) int {
+			iPosition := astData.FileSet.Position(nodes[i].Pos())
+			return assertSection.Span.End - iPosition.Offset
+		})
+
+		if nearestNode == len(nodes) {
+			return nil, fmt.Errorf("Not matched node for spec at %s:%d", assertSection.StartPos.File, assertSection.StartPos.Line)
+		}
+
+		stmt := nodes[nearestNode]
+		_, exists := astData.NodeInfo[stmt]
+		if !exists {
+			astData.NodeInfo[stmt] = data.NewAdditionalInfo()
+		}
+		astData.NodeInfo[stmt].Asserts = assertSection
+	}
+
 	return astData, nil
 }

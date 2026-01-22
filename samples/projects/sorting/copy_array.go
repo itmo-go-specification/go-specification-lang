@@ -1,6 +1,7 @@
 package main
 
-/*@
+/*
+@
 assigns dest[0..n-1];
 ensures n >= 0;
 */

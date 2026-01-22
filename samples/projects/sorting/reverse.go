@@ -1,6 +1,7 @@
 package main
 
-/*@
+/*
+@
 assigns arr[0..n-1];
 ensures n >= 0;
 */

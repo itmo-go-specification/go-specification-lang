@@ -1,6 +1,7 @@
 package main
 
-/*@
+/*
+@
 assigns \nothing;
 ensures \result >= 0;
 ensures \result < n;

@@ -6,6 +6,7 @@ use (
 	./samples/projects/interactive
 	./samples/projects/may_negate
 	./samples/projects/min
-	./samples/projects/swap
 	./samples/projects/simple
+	./samples/projects/sorting
+	./samples/projects/swap
 )

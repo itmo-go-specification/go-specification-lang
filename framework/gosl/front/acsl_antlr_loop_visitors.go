@@ -1,12 +1,12 @@
 package front
 
 import (
-	"fmt"
 	acsl "gpma/framework/gosl/front/generated/grammar/acsl"
 	specir "gpma/framework/gosl/ir"
 	"strings"
 
 	"github.com/antlr4-go/antlr/v4"
+	log "github.com/sirupsen/logrus"
 )
 
 func (b *ACSLBuilder) VisitAcsl_comment_loop_annot(ctx *acsl.Acsl_comment_loop_annotContext) interface{} {
@@ -25,7 +25,7 @@ func (b *ACSLBuilder) VisitAcsl_comment_loop_annot(ctx *acsl.Acsl_comment_loop_a
 	}
 
 	b.Mod.LoopSpecs = append(b.Mod.LoopSpecs, ls)
-	fmt.Println("[ACSLBuilder] added LoopSpec. Text:", ctx.GetText())
+	log.Debugln("[ACSLBuilder] added LoopSpec. Text:", ctx.GetText())
 	return nil
 }
 

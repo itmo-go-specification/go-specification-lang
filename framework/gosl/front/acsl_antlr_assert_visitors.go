@@ -1,13 +1,14 @@
 package front
 
 import (
-	"fmt"
 	acsl "gpma/framework/gosl/front/generated/grammar/acsl"
 	specir "gpma/framework/gosl/ir"
+
+	log "github.com/sirupsen/logrus"
 )
 
 func (b *ACSLBuilder) VisitAcsl_comment_assertion(ctx *acsl.Acsl_comment_assertionContext) interface{} {
-	fmt.Printf("VisitAcsl_comment_assertion Text:%s, type:%T\n", ctx.GetText(), ctx.Assertion())
+	log.Debugf("VisitAcsl_comment_assertion Text:%s, type:%T\n", ctx.GetText(), ctx.Assertion())
 
 	a := &specir.AssertSpec{
 		Span: b.blockSpan(ctx),
@@ -25,18 +26,18 @@ func (b *ACSLBuilder) VisitAcsl_comment_assertion(ctx *acsl.Acsl_comment_asserti
 }
 
 func (b *ACSLBuilder) VisitAssertion(ctx *acsl.AssertionContext) interface{} {
-	fmt.Printf("VisitAssertion Text:%s, type:%T, pred_type:%T\n", ctx.GetText(), ctx, ctx.Pred())
+	log.Debugf("VisitAssertion Text:%s, type:%T, pred_type:%T\n", ctx.GetText(), ctx, ctx.Pred())
 	return b.parseNamedPred(ctx.Pred())
 }
 
 func (b *ACSLBuilder) VisitAcsl_comment_statement_contract(ctx *acsl.Acsl_comment_statement_contractContext) interface{} {
-	fmt.Println("[ACSLBuilder] statement contract (stub)", "Text:", ctx.GetText())
+	log.Debugln("[ACSLBuilder] statement contract (stub)", "Text:", ctx.GetText())
 	return nil
 }
 
 // Function contract: requires/ensures/assigns
 func (b *ACSLBuilder) VisitFunction_contract(ctx *acsl.Function_contractContext) interface{} {
-	fmt.Println("VisitFunction_contract text:", ctx.GetText())
+	log.Debugln("VisitFunction_contract text:", ctx.GetText())
 	if b.currFunc == nil || ctx == nil {
 		return nil
 	}

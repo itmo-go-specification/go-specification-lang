@@ -1,9 +1,10 @@
 package front
 
 import (
-	"fmt"
 	acsl "gpma/framework/gosl/front/generated/grammar/acsl"
 	specir "gpma/framework/gosl/ir"
+
+	log "github.com/sirupsen/logrus"
 )
 
 func (b *ACSLBuilder) VisitAcsl_comment_contract(ctx *acsl.Acsl_comment_contractContext) interface{} {
@@ -26,15 +27,15 @@ func (b *ACSLBuilder) VisitAcsl_comment_contract(ctx *acsl.Acsl_comment_contract
 
 	fc.StartPos, fc.EndPos = b.blockPositions(fcCtx)
 
-	fmt.Println("[ACSLBuilder] added FuncContract. Text:", ctx.GetText())
-	// fmt.Println("[ACSLBuilder] added FuncContract:", fc.FuncName, "Text:", ctx.GetText(), "comment_span:", b.blockSpan(ctx), "contract_span:", b.blockSpan(fcCtx))
-	// fmt.Println("contract_start:", fc.StartPos, "contract_end:", fc.EndPos)
-	// fmt.Println("block_start:", b.Block.Start, "block_end:", b.Block.End)
+	log.Debugln("[ACSLBuilder] added FuncContract. Text:", ctx.GetText())
+	// log.Debugln("[ACSLBuilder] added FuncContract:", fc.FuncName, "Text:", ctx.GetText(), "comment_span:", b.blockSpan(ctx), "contract_span:", b.blockSpan(fcCtx))
+	// log.Debugln("contract_start:", fc.StartPos, "contract_end:", fc.EndPos)
+	// log.Debugln("block_start:", b.Block.Start, "block_end:", b.Block.End)
 	return nil
 }
 
 func (b *ACSLBuilder) VisitSimple_clause(ctx *acsl.Simple_clauseContext) interface{} {
-	fmt.Println("VisitSimple_clause text:", ctx.GetText())
+	log.Debugln("VisitSimple_clause text:", ctx.GetText())
 	if b.currFunc == nil || ctx == nil {
 		return nil
 	}
@@ -57,7 +58,7 @@ func (b *ACSLBuilder) VisitSimple_clause(ctx *acsl.Simple_clauseContext) interfa
 
 // requires_clause / ensures_clause -> NamedPredicate
 func (b *ACSLBuilder) VisitRequires_clause(ctx *acsl.Requires_clauseContext) interface{} {
-	fmt.Println("VisitRequires_clause text:", ctx.GetText())
+	log.Debugln("VisitRequires_clause text:", ctx.GetText())
 	if ctx == nil {
 		return nil
 	}
@@ -65,7 +66,7 @@ func (b *ACSLBuilder) VisitRequires_clause(ctx *acsl.Requires_clauseContext) int
 }
 
 func (b *ACSLBuilder) VisitEnsures_clause(ctx *acsl.Ensures_clauseContext) interface{} {
-	fmt.Println("VisitEnsures_clause text:", ctx.GetText())
+	log.Debugln("VisitEnsures_clause text:", ctx.GetText())
 	if ctx == nil {
 		return nil
 	}

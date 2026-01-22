@@ -1,7 +1,6 @@
 package front
 
 import (
-	"fmt"
 	acsl "gpma/framework/gosl/front/generated/grammar/acsl"
 	grammar "gpma/framework/gosl/front/generated/grammar/acsl"
 	specir "gpma/framework/gosl/ir"
@@ -32,7 +31,7 @@ func (b *ACSLBuilder) VisitAcsl_comment(ctx *acsl.Acsl_commentContext) interface
 }
 
 func (b *ACSLBuilder) parseNamedPred(p acsl.IPredContext) specir.NamedPredicate {
-	fmt.Printf("parseNamedPred text:%s, type:%T", p.GetText(), p)
+	log.Debugf("parseNamedPred text:%s, type:%T", p.GetText(), p)
 	// default without label
 	np := specir.NamedPredicate{
 		Label: "",
@@ -54,7 +53,7 @@ func (b *ACSLBuilder) parseNamedPred(p acsl.IPredContext) specir.NamedPredicate 
 		np.Expr = b.predToExpr(sn.Pred())
 		return np
 	}
-	fmt.Println("parseNamedPred: Simple")
+	log.Debugln("parseNamedPred: Simple")
 	// Simple pred
 	np.Expr = b.predToExpr(p)
 	return np
@@ -307,7 +306,7 @@ func polyIDName(poly acsl.IPoly_idContext) (string, bool) {
 }
 
 func (b *ACSLBuilder) VisitFunc_application_term(ctx *acsl.Func_application_termContext) interface{} {
-	fmt.Println("VisitFunc_application_term text:", ctx.GetText())
+	log.Debugln("VisitFunc_application_term text:", ctx.GetText())
 
 	name := ""
 	if n, ok := polyIDName(ctx.Poly_id()); ok {

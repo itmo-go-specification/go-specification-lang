@@ -13,7 +13,6 @@ func clamp(x int, min int, max int) int {
 		return max
 	}
 
-	/*@ assert x >= min; */
-	/*@ assert x <= max; */
+	/*@ assert (x >= min) && (x <= max); */
 	return x
 }

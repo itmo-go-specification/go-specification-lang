@@ -15,8 +15,15 @@ func processFunctions(astData *data.ASTData, result *plugin.PluginResult, strict
 		switch node := n.(type) {
 		case *ast.FuncDecl:
 			info := astData.TryGetNodeInfo(node)
-			if info != nil && info.FuncContract != nil {
-				if processFunc(node, info.FuncContract, astData, strictMode) {
+			var contract *specir.FuncContract
+			if info != nil {
+				contract = info.FuncContract
+			}
+
+			asserts := collectAssertSpecs(node, astData)
+
+			if contract != nil || len(asserts) > 0 {
+				if processFunc(node, contract, astData, strictMode) {
 					result.WithASTModified()
 				}
 				node_info := astData.GetNodeInfo(node)
@@ -35,9 +42,11 @@ func processFunc(funcDecl *ast.FuncDecl, contract *specir.FuncContract, astData 
 
 	converter := NewConverter()
 
-	// Собираем \old выражения из постусловий
-	for _, ens := range contract.Ensures {
-		converter.CollectOld(ens.Expr)
+	// Собираем \old выражения из постусловий (если контракт есть)
+	if contract != nil {
+		for _, ens := range contract.Ensures {
+			converter.CollectOld(ens.Expr)
+		}
 	}
 
 	// Собираем все AssertSpec из функции и \old выражения из них
@@ -49,7 +58,10 @@ func processFunc(funcDecl *ast.FuncDecl, contract *specir.FuncContract, astData 
 	var newStmts []ast.Stmt
 
 	var preconditionsPassedVar *ast.Ident
-	var hasRequires = len(contract.Requires) > 0
+	var hasRequires = false
+	if contract != nil {
+		hasRequires = len(contract.Requires) > 0
+	}
 
 	if !strictMode && hasRequires {
 		preconditionsPassedVar = &ast.Ident{Name: "__preconditions_passed"}
@@ -60,34 +72,34 @@ func processFunc(funcDecl *ast.FuncDecl, contract *specir.FuncContract, astData 
 		})
 	}
 
-	// Добавляем проверки requires
-	for _, req := range contract.Requires {
-		condition := converter.Convert(req.Expr)
+	if contract != nil {
+		for _, req := range contract.Requires {
+			condition := converter.Convert(req.Expr)
 
-		if strictMode {
-			checkCall := createCheckCall(condition, "precondition", req.Label)
-			newStmts = append(newStmts, &ast.ExprStmt{X: checkCall})
-		} else {
-			// if !condition { __preconditions_passed = false }
-			newStmts = append(newStmts, &ast.IfStmt{
-				Cond: &ast.UnaryExpr{
-					Op: token.NOT,
-					X:  condition,
-				},
-				Body: &ast.BlockStmt{
-					List: []ast.Stmt{
-						&ast.AssignStmt{
-							Lhs: []ast.Expr{preconditionsPassedVar},
-							Tok: token.ASSIGN,
-							Rhs: []ast.Expr{&ast.Ident{Name: "false"}},
+			if strictMode {
+				checkCall := createCheckCall(condition, "precondition", req.Label)
+				newStmts = append(newStmts, &ast.ExprStmt{X: checkCall})
+			} else {
+				// if !condition { __preconditions_passed = false }
+				newStmts = append(newStmts, &ast.IfStmt{
+					Cond: &ast.UnaryExpr{
+						Op: token.NOT,
+						X:  condition,
+					},
+					Body: &ast.BlockStmt{
+						List: []ast.Stmt{
+							&ast.AssignStmt{
+								Lhs: []ast.Expr{preconditionsPassedVar},
+								Tok: token.ASSIGN,
+								Rhs: []ast.Expr{&ast.Ident{Name: "false"}},
+							},
 						},
 					},
-				},
-			})
+				})
+			}
 		}
 	}
 
-	// Объявление переменных для \old
 	for _, oldInfo := range converter.GetOldVars() {
 		value := converter.Convert(oldInfo.expr)
 		assign := &ast.AssignStmt{
@@ -99,40 +111,42 @@ func processFunc(funcDecl *ast.FuncDecl, contract *specir.FuncContract, astData 
 		oldInfo.isDeclared = true
 	}
 
-	has_result_var := funcDecl.Type.Results != nil && len(funcDecl.Type.Results.List) == 1
-	// Добавляем объявление __result если есть ensures
+	hasEnsures := contract != nil && len(contract.Ensures) > 0
+	has_result_var := hasEnsures && funcDecl.Type.Results != nil && len(funcDecl.Type.Results.List) == 1
+
 	if has_result_var {
 		resultDecls := createResultDeclaration(funcDecl)
 		newStmts = append(newStmts, resultDecls)
 	}
 
-	// Добавляем проверки ensures (defer)
-	for _, ens := range contract.Ensures {
-		condition := converter.Convert(ens.Expr)
+	if contract != nil {
+		for _, ens := range contract.Ensures {
+			condition := converter.Convert(ens.Expr)
 
-		if strictMode || !hasRequires {
-			checkCall := createCheckCall(condition, "postcondition", ens.Label)
-			deferCheck := &ast.DeferStmt{Call: checkCall}
-			newStmts = append(newStmts, deferCheck)
-		} else {
-			checkCall := createCheckCall(condition, "postcondition", ens.Label)
+			if strictMode || !hasRequires {
+				checkCall := createCheckCall(condition, "postcondition", ens.Label)
+				deferCheck := &ast.DeferStmt{Call: checkCall}
+				newStmts = append(newStmts, deferCheck)
+			} else {
+				checkCall := createCheckCall(condition, "postcondition", ens.Label)
 
-			// defer func() { if __preconditions_passed { checks.Check(...) } }()
-			deferFunc := &ast.FuncLit{
-				Type: &ast.FuncType{Params: &ast.FieldList{}},
-				Body: &ast.BlockStmt{
-					List: []ast.Stmt{
-						&ast.IfStmt{
-							Cond: preconditionsPassedVar,
-							Body: &ast.BlockStmt{
-								List: []ast.Stmt{&ast.ExprStmt{X: checkCall}},
+				// defer func() { if __preconditions_passed { checks.Check(...) } }()
+				deferFunc := &ast.FuncLit{
+					Type: &ast.FuncType{Params: &ast.FieldList{}},
+					Body: &ast.BlockStmt{
+						List: []ast.Stmt{
+							&ast.IfStmt{
+								Cond: preconditionsPassedVar,
+								Body: &ast.BlockStmt{
+									List: []ast.Stmt{&ast.ExprStmt{X: checkCall}},
+								},
 							},
 						},
 					},
-				},
+				}
+				deferCheck := &ast.DeferStmt{Call: &ast.CallExpr{Fun: deferFunc}}
+				newStmts = append(newStmts, deferCheck)
 			}
-			deferCheck := &ast.DeferStmt{Call: &ast.CallExpr{Fun: deferFunc}}
-			newStmts = append(newStmts, deferCheck)
 		}
 	}
 

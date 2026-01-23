@@ -16,7 +16,7 @@ func processFunctions(astData *data.ASTData, result *plugin.PluginResult, strict
 		case *ast.FuncDecl:
 			info := astData.TryGetNodeInfo(node)
 			if info != nil && info.FuncContract != nil {
-				if processFunc(node, info.FuncContract, strictMode) {
+				if processFunc(node, info.FuncContract, astData, strictMode) {
 					result.WithASTModified()
 				}
 				node_info := astData.GetNodeInfo(node)
@@ -28,7 +28,7 @@ func processFunctions(astData *data.ASTData, result *plugin.PluginResult, strict
 	})
 }
 
-func processFunc(funcDecl *ast.FuncDecl, contract *specir.FuncContract, strictMode bool) bool {
+func processFunc(funcDecl *ast.FuncDecl, contract *specir.FuncContract, astData *data.ASTData, strictMode bool) bool {
 	if funcDecl.Body == nil {
 		return false
 	}
@@ -38,6 +38,12 @@ func processFunc(funcDecl *ast.FuncDecl, contract *specir.FuncContract, strictMo
 	// Собираем \old выражения из постусловий
 	for _, ens := range contract.Ensures {
 		converter.CollectOld(ens.Expr)
+	}
+
+	// Собираем все AssertSpec из функции и \old выражения из них
+	asserts := collectAssertSpecs(funcDecl, astData)
+	for _, assertSpecWithNode := range asserts {
+		converter.CollectOld(assertSpecWithNode.assert.Assertion.Expr)
 	}
 
 	var newStmts []ast.Stmt
@@ -130,6 +136,10 @@ func processFunc(funcDecl *ast.FuncDecl, contract *specir.FuncContract, strictMo
 		}
 	}
 
+	if len(asserts) > 0 {
+		funcDecl.Body.List = insertAssertChecksIntoBlock(funcDecl.Body.List, asserts, converter)
+	}
+
 	if len(newStmts) > 0 {
 		funcDecl.Body.List = append(newStmts, funcDecl.Body.List...)
 
@@ -160,6 +170,136 @@ func createCheckCall(condition ast.Expr, prefix, label string) *ast.CallExpr {
 			},
 		},
 	}
+}
+
+func collectAssertSpecs(funcDecl *ast.FuncDecl, astData *data.ASTData) []*assertSpecWithNode {
+	var asserts []*assertSpecWithNode
+
+	ast.Inspect(funcDecl.Body, func(n ast.Node) bool {
+		if stmt, ok := n.(ast.Stmt); ok {
+			if info := astData.TryGetNodeInfo(stmt); info != nil && info.Asserts != nil {
+				asserts = append(asserts, &assertSpecWithNode{
+					stmt:   stmt,
+					assert: info.Asserts,
+				})
+			}
+		}
+		return true
+	})
+
+	return asserts
+}
+
+type assertSpecWithNode struct {
+	stmt   ast.Stmt
+	assert *specir.AssertSpec
+}
+
+func insertAssertChecksIntoBlock(stmts []ast.Stmt, asserts []*assertSpecWithNode, converter *Converter) []ast.Stmt {
+	assertMap := make(map[ast.Stmt]*specir.AssertSpec)
+	processedStmts := make(map[ast.Stmt]bool)
+
+	for _, a := range asserts {
+		assertMap[a.stmt] = a.assert
+	}
+
+	var result []ast.Stmt
+
+	for _, stmt := range stmts {
+		if assert, ok := assertMap[stmt]; ok {
+			// Собираем \old выражения прямо перед преобразованием
+			converter.CollectOld(assert.Assertion.Expr)
+			condition := converter.Convert(assert.Assertion.Expr)
+			checkCall := createCheckCall(condition, "assertion", assert.Assertion.Label)
+			checkStmt := &ast.ExprStmt{X: checkCall}
+
+			// Вставляем Check ПЕРЕД statement'ом
+			result = append(result, checkStmt)
+			processedStmts[stmt] = true
+		}
+
+		result = append(result, stmt)
+		processAssertInNestedBlocks(stmt, assertMap, converter)
+	}
+
+	// Обрабатываем оставшиеся AssertSpec которые не были привязаны к конкретным statement'ам
+	for stmt, assert := range assertMap {
+		if !processedStmts[stmt] {
+			// Проверяем что этот statement не из другого блока
+			found := false
+			for _, s := range stmts {
+				if s == stmt {
+					found = true
+					break
+				}
+			}
+			if found {
+				// Собираем \old выражения перед преобразованием
+				converter.CollectOld(assert.Assertion.Expr)
+				condition := converter.Convert(assert.Assertion.Expr)
+				checkCall := createCheckCall(condition, "assertion", assert.Assertion.Label)
+				checkStmt := &ast.ExprStmt{X: checkCall}
+				result = append(result, checkStmt)
+			}
+		}
+	}
+
+	return result
+}
+
+func processAssertInNestedBlocks(stmt ast.Stmt, assertMap map[ast.Stmt]*specir.AssertSpec, converter *Converter) {
+	switch s := stmt.(type) {
+	case *ast.IfStmt:
+		if s.Body != nil {
+			s.Body.List = insertAssertChecksIntoBlock(s.Body.List, convertMapToSlice(assertMap), converter)
+		}
+		if s.Else != nil {
+			if elseBlock, ok := s.Else.(*ast.BlockStmt); ok {
+				elseBlock.List = insertAssertChecksIntoBlock(elseBlock.List, convertMapToSlice(assertMap), converter)
+			} else if elseIf, ok := s.Else.(*ast.IfStmt); ok {
+				processAssertInNestedBlocks(elseIf, assertMap, converter)
+			}
+		}
+	case *ast.ForStmt:
+		if s.Body != nil {
+			s.Body.List = insertAssertChecksIntoBlock(s.Body.List, convertMapToSlice(assertMap), converter)
+		}
+	case *ast.RangeStmt:
+		if s.Body != nil {
+			s.Body.List = insertAssertChecksIntoBlock(s.Body.List, convertMapToSlice(assertMap), converter)
+		}
+	case *ast.SwitchStmt:
+		for _, caseBlock := range s.Body.List {
+			if caseClause, ok := caseBlock.(*ast.CaseClause); ok {
+				caseClause.Body = insertAssertChecksIntoBlock(caseClause.Body, convertMapToSlice(assertMap), converter)
+			}
+		}
+	case *ast.TypeSwitchStmt:
+		for _, caseBlock := range s.Body.List {
+			if caseClause, ok := caseBlock.(*ast.CaseClause); ok {
+				caseClause.Body = insertAssertChecksIntoBlock(caseClause.Body, convertMapToSlice(assertMap), converter)
+			}
+		}
+	case *ast.SelectStmt:
+		for _, comm := range s.Body.List {
+			if commClause, ok := comm.(*ast.CommClause); ok {
+				commClause.Body = insertAssertChecksIntoBlock(commClause.Body, convertMapToSlice(assertMap), converter)
+			}
+		}
+	case *ast.BlockStmt:
+		s.List = insertAssertChecksIntoBlock(s.List, convertMapToSlice(assertMap), converter)
+	}
+}
+
+func convertMapToSlice(assertMap map[ast.Stmt]*specir.AssertSpec) []*assertSpecWithNode {
+	var result []*assertSpecWithNode
+	for stmt, assert := range assertMap {
+		result = append(result, &assertSpecWithNode{
+			stmt:   stmt,
+			assert: assert,
+		})
+	}
+	return result
 }
 
 func createResultDeclaration(funcDecl *ast.FuncDecl) ast.Stmt {

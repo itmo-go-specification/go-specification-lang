@@ -12,9 +12,11 @@ requires num >= 0.0;
 ensures num >= 2.0;
 assigns \nothing;
 */
-func printNumber(num float64) {
+func foo(num float64) float64 {
 	fmt.Printf("Positive number is: %v\n", num)
 	num++
+	/*@ assert \old(num) == (num - 1); */
+	return num;
 }
 
 func main() {
@@ -30,5 +32,5 @@ func main() {
 		os.Exit(1)
 	}
 
-	printNumber(num)
+	foo(num)
 }

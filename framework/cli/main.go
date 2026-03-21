@@ -19,7 +19,7 @@ import (
 )
 
 func main() {
-	log.SetLevel(log.InfoLevel)
+	log.SetLevel(log.DebugLevel)
 
 	app := &cli.App{
 		Name:  "gpma-cli",

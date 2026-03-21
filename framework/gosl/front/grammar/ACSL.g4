@@ -154,7 +154,7 @@ binders
     ;
 
 binder
-    : type_expr variable_ident (',' variable_ident)*
+    : variable_ident (',' variable_ident)* type_expr
     ;
 
 type_expr

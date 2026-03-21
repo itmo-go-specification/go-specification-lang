@@ -477,3 +477,72 @@ func (b *ACSLBuilder) VisitNegation_pred(ctx *acsl.Negation_predContext) interfa
 		Expr:     b.predToExpr(ctx.Pred()),
 	}
 }
+
+func (b *ACSLBuilder) VisitUniversal_quantification_pred(ctx *acsl.Universal_quantification_predContext) interface{} {
+	return &specir.ExprQuantifier{
+		BaseExpr: specir.BaseExpr{Span: b.blockSpan(ctx)},
+		Kind:     specir.QuantifierForall,
+		Vars:     b.bindersToVars(ctx.Binders()),
+		Body:     b.predToExpr(ctx.Pred()),
+	}
+}
+
+func (b *ACSLBuilder) VisitExistential_quantification_pred(ctx *acsl.Existential_quantification_predContext) interface{} {
+	log.Debug("VisitExistential_quantification_pred")
+
+	return &specir.ExprQuantifier{
+		BaseExpr: specir.BaseExpr{Span: b.blockSpan(ctx)},
+		Kind:     specir.QuantifierExists,
+		Vars:     b.bindersToVars(ctx.Binders()),
+		Body:     b.predToExpr(ctx.Pred()),
+	}
+}
+
+func (b *ACSLBuilder) bindersToVars(ctx acsl.IBindersContext) []specir.BoundVar {
+
+	if ctx == nil {
+		return nil
+	}
+
+	var out []specir.BoundVar
+
+	for _, binderCtx := range ctx.AllBinder() {
+		ty := b.typeExprFromContext(binderCtx.Type_expr())
+		for _, vctx := range binderCtx.AllVariable_ident() {
+			out = append(out, specir.BoundVar{
+				Name: b.variableIdentName(vctx),
+				Type: ty,
+			})
+		}
+	}
+
+	return out
+}
+
+func (b *ACSLBuilder) typeExprFromContext(ctx acsl.IType_exprContext) specir.TypeExpr {
+	if ctx == nil {
+		return specir.TypeExpr{}
+	}
+
+	switch ctx.GetText() {
+	case "boolean":
+		return specir.TypeExpr{Kind: specir.TypeBoolean}
+	case "integer":
+		return specir.TypeExpr{Kind: specir.TypeInteger}
+	case "real":
+		return specir.TypeExpr{Kind: specir.TypeReal}
+	default:
+		return specir.TypeExpr{Kind: specir.TypeCustom, Name: ctx.GetText()}
+	}
+}
+
+func (b *ACSLBuilder) variableIdentName(ctx acsl.IVariable_identContext) string {
+	if ctx == nil {
+		return ""
+	}
+	ids := collectIdentifiers(ctx)
+	if len(ids) > 0 {
+		return ids[0]
+	}
+	return ctx.GetText()
+}

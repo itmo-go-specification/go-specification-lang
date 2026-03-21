@@ -76,9 +76,10 @@ const (
 	OpLt  // < 9
 	OpGt  // > 10
 
-	OpAnd // && 11
-	OpOr  // || 12
-	OpXor // ^^ 13
+	OpAnd     // && 11
+	OpOr      // || 12
+	OpXor     // ^^ 13
+	OpImplies // ==> 14
 	// TODO: bitwise operation for go ???
 )
 
@@ -131,3 +132,24 @@ type ExprOld struct {
 }
 
 func (*ExprOld) exprNode() {}
+
+type QuantifierKind int
+
+const (
+	QuantifierForall QuantifierKind = iota
+	QuantifierExists
+)
+
+type BoundVar struct {
+	Name string
+	Type TypeExpr
+}
+
+type ExprQuantifier struct {
+	BaseExpr
+	Kind QuantifierKind
+	Vars []BoundVar
+	Body Expr
+}
+
+func (*ExprQuantifier) exprNode() {}

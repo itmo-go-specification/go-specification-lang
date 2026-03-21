@@ -51,6 +51,11 @@ type exprJSON struct {
 
 	// Old
 	Inner *exprJSON `json:"inner,omitempty"`
+
+	// Quantifier
+	QuantifierKind QuantifierKind `json:"quantifierKind,omitempty"`
+	Vars           []BoundVar     `json:"vars,omitempty"`
+	Body           *exprJSON      `json:"body,omitempty"`
 }
 
 func marshalExpr(e Expr) (*exprJSON, error) {
@@ -151,6 +156,18 @@ func marshalExpr(e Expr) (*exprJSON, error) {
 			Span:  t.GetSpan(),
 			Inner: in,
 		}, nil
+	case *ExprQuantifier:
+		body, err := marshalExpr(t.Body)
+		if err != nil {
+			return nil, err
+		}
+		return &exprJSON{
+			Kind:           "quantifier",
+			Span:           t.GetSpan(),
+			QuantifierKind: t.Kind,
+			Vars:           t.Vars,
+			Body:           body,
+		}, nil
 	default:
 		return nil, fmt.Errorf("json: unsupported Expr dynamic type %T", e)
 	}
@@ -245,6 +262,17 @@ func unmarshalExpr(j *exprJSON) (Expr, error) {
 		return &ExprOld{
 			BaseExpr: BaseExpr{Span: j.Span},
 			Inner:    in,
+		}, nil
+	case "quantifier":
+		body, err := unmarshalExpr(j.Body)
+		if err != nil {
+			return nil, err
+		}
+		return &ExprQuantifier{
+			BaseExpr: BaseExpr{Span: j.Span},
+			Kind:     j.QuantifierKind,
+			Vars:     j.Vars,
+			Body:     body,
 		}, nil
 	default:
 		return nil, fmt.Errorf("json: unknown Expr kind %q", j.Kind)

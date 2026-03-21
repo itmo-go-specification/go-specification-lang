@@ -15,17 +15,17 @@ func CollectRawBlocks(fset *token.FileSet, file *ast.File, filename string) []Ra
 			if !isACSLComment(c.Text) {
 				continue
 			}
-			
+
 			blocks = append(blocks, RawSpecBlock{
 				Text: c.Text,
 				Start: specir.Position{
-					File:  filename,
+					File:   filename,
 					Offset: fset.Position(c.Pos()).Offset,
 					Line:   fset.Position(c.Pos()).Line,
 					Column: fset.Position(c.Pos()).Column,
 				},
 				End: specir.Position{
-					File:  filename,
+					File:   filename,
 					Offset: fset.Position(c.End()).Offset,
 					Line:   fset.Position(c.End()).Line,
 					Column: fset.Position(c.End()).Column,
@@ -38,11 +38,12 @@ func CollectRawBlocks(fset *token.FileSet, file *ast.File, filename string) []Ra
 
 // isACSLComment returns true if comment text is an ACSL block/line comment.
 // Supports:
-//   /*@ ... */
-//   /* @ ... */
-//   /*\n@\n ... */   (what gofmt may produce)
-//   //@ ...
-//   // @ ...
+//
+//	/*@ ... */
+//	/* @ ... */
+//	/*\n@\n ... */   (what gofmt may produce)
+//	//@ ...
+//	// @ ...
 func isACSLComment(text string) bool {
 	if strings.HasPrefix(text, "//") {
 		i := 2

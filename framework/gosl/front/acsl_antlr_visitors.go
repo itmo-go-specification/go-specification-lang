@@ -269,6 +269,51 @@ func (b *ACSLBuilder) VisitDisjunction_pred(ctx *acsl.Disjunction_predContext) i
 	}
 }
 
+// pred ==> pred
+func (b *ACSLBuilder) VisitImplication_pred(ctx *acsl.Implication_predContext) interface{} {
+	log.Debug("VisitImplication_pred text:", ctx.GetText())
+	ps := ctx.AllPred()
+	if len(ps) < 2 {
+		return b.predToExpr(ctx.Pred(0))
+	}
+	return &specir.ExprBinary{
+		BaseExpr: specir.BaseExpr{Span: b.blockSpan(ctx)},
+		Op:       specir.OpImplies,
+		Left:     b.predToExpr(ps[0]),
+		Right:    b.predToExpr(ps[1]),
+	}
+}
+
+// pred <==> pred
+func (b *ACSLBuilder) VisitEquivalence_pred(ctx *acsl.Equivalence_predContext) interface{} {
+	log.Debug("VisitEquivalence_pred text:", ctx.GetText())
+	ps := ctx.AllPred()
+	if len(ps) < 2 {
+		return b.predToExpr(ctx.Pred(0))
+	}
+	// Represent A <==> B as (A ==> B) && (B ==> A)
+	left := b.predToExpr(ps[0])
+	right := b.predToExpr(ps[1])
+	fwd := &specir.ExprBinary{
+		BaseExpr: specir.BaseExpr{Span: b.blockSpan(ctx)},
+		Op:       specir.OpImplies,
+		Left:     left,
+		Right:    right,
+	}
+	bwd := &specir.ExprBinary{
+		BaseExpr: specir.BaseExpr{Span: b.blockSpan(ctx)},
+		Op:       specir.OpImplies,
+		Left:     right,
+		Right:    left,
+	}
+	return &specir.ExprBinary{
+		BaseExpr: specir.BaseExpr{Span: b.blockSpan(ctx)},
+		Op:       specir.OpAnd,
+		Left:     fwd,
+		Right:    bwd,
+	}
+}
+
 // pred: cond ? p1 : p2
 func (b *ACSLBuilder) VisitTernary_condition_pred(ctx *acsl.Ternary_condition_predContext) interface{} {
 	log.Debug("VisitTernary_condition_pred text:", ctx.GetText())

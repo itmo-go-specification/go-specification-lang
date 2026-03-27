@@ -111,6 +111,8 @@ func convertExpr(conv exprConverter, expr specir.Expr) ast.Expr {
 		return convertCall(conv, e)
 	case *specir.ExprConditional:
 		return convertConditional(conv, e)
+	case *specir.ExprQuantifier:
+		return convertQuantifier(conv, e)
 	case *specir.ExprOld:
 		panic(`\old is not valid in this context (only allowed in ensures)`)
 	case *specir.ExprResult:

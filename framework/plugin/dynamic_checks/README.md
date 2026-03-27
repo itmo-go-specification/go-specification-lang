@@ -149,7 +149,41 @@ func max(a, b int) int { ... }
 
 ### Квантификаторы
 
-`\forall` и `\exists` **не поддерживаются** плагином — при их использовании будет паника.
+Плагин поддерживает `\forall` и `\exists` с целочисленными переменными (`integer`).
+
+Тело квантификатора должно иметь стандартную форму с явными границами:
+
+- **`\forall`**: `(lo <= i && i < hi) ==> P(i)`
+- **`\exists`**: `(lo <= i && i < hi) && P(i)`
+
+Пример:
+
+```c
+/*@
+requires \forall integer i; 0 <= i && i < n ==> a[i] >= 0;
+ensures  \exists integer i; 0 <= i && i < n && \result == a[i];
+*/
+```
+
+Генерируемый код использует IIFE (immediately-invoked function expression) с циклом `for`:
+
+```go
+// \forall integer i; lo <= i && i < hi ==> P(i)
+func() bool {
+    for i := lo; i < hi; i++ {
+        if !(P(i)) { return false }
+    }
+    return true
+}()
+
+// \exists integer i; lo <= i && i < hi && P(i)
+func() bool {
+    for i := lo; i < hi; i++ {
+        if P(i) { return true }
+    }
+    return false
+}()
+```
 
 ---
 

@@ -23,6 +23,8 @@ func Walk(expr Expr, visitor Visitor) {
 		Walk(e.Else, visitor)
 	case *ExprOld:
 		Walk(e.Inner, visitor)
+	case *ExprQuantifier:
+		Walk(e.Body, visitor)
 	case *ExprResult:
 	case *ExprVar:
 	case *ExprLiteral:

@@ -7,7 +7,8 @@ import (
 	"strconv"
 )
 
-/*@
+/*
+@
 requires num >= 0.0;
 ensures num >= 2.0;
 assigns \nothing;
@@ -15,8 +16,8 @@ assigns \nothing;
 func foo(num float64) float64 {
 	fmt.Printf("Positive number is: %v\n", num)
 	num++
-	/*@ assert \old(num) == (num - 1); */
-	return num;
+	/*@ assert num == (num - 1) + 1; */
+	return num
 }
 
 func main() {

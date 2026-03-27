@@ -8,7 +8,23 @@ import (
 	"strconv"
 )
 
-type Converter struct {
+type exprConverter interface {
+	Convert(specir.Expr) ast.Expr
+}
+
+// baseConverter translates "pure" IR expressions: literals, variables,
+// arithmetic, function calls, and the ternary operator.
+// Use for assert and loop invariant contexts where \old and \result are not allowed.
+type baseConverter struct{}
+
+func (c *baseConverter) Convert(expr specir.Expr) ast.Expr {
+	return convertExpr(c, expr)
+}
+
+// contractConverter translates IR expressions in the context of a function contract.
+// Extends baseConverter with support for \old and \result.
+// Use for requires and ensures clauses.
+type contractConverter struct {
 	oldVars  map[specir.Expr]*oldVarInfo
 	oldOrder []specir.Expr
 	counter  int
@@ -20,24 +36,32 @@ type oldVarInfo struct {
 	isDeclared bool
 }
 
-func NewConverter() *Converter {
-	return &Converter{
+func newContractConverter() *contractConverter {
+	return &contractConverter{
 		oldVars:  make(map[specir.Expr]*oldVarInfo),
 		oldOrder: make([]specir.Expr, 0),
-		counter:  0,
 	}
 }
 
-// CollectOld собирает все \old выражения
-func (c *Converter) CollectOld(expr specir.Expr) {
+func (c *contractConverter) Convert(expr specir.Expr) ast.Expr {
+	switch e := expr.(type) {
+	case *specir.ExprOld:
+		return c.convertOld(e)
+	case *specir.ExprResult:
+		return &ast.Ident{Name: "__result"}
+	default:
+		return convertExpr(c, expr)
+	}
+}
+
+func (c *contractConverter) CollectOld(expr specir.Expr) {
 	specir.Walk(expr, func(e specir.Expr) bool {
 		if old, ok := e.(*specir.ExprOld); ok {
 			if _, exists := c.oldVars[old.Inner]; !exists {
 				c.counter++
 				c.oldVars[old.Inner] = &oldVarInfo{
-					name:       fmt.Sprintf("__old_%d", c.counter),
-					expr:       old.Inner,
-					isDeclared: false,
+					name: fmt.Sprintf("__old_%d", c.counter),
+					expr: old.Inner,
 				}
 				c.oldOrder = append(c.oldOrder, old.Inner)
 			}
@@ -46,7 +70,7 @@ func (c *Converter) CollectOld(expr specir.Expr) {
 	})
 }
 
-func (c *Converter) GetOldVars() []*oldVarInfo {
+func (c *contractConverter) GetOldVars() []*oldVarInfo {
 	result := make([]*oldVarInfo, 0, len(c.oldOrder))
 	for _, expr := range c.oldOrder {
 		result = append(result, c.oldVars[expr])
@@ -54,30 +78,49 @@ func (c *Converter) GetOldVars() []*oldVarInfo {
 	return result
 }
 
-func (c *Converter) Convert(expr specir.Expr) ast.Expr {
+func (c *contractConverter) newVar() string {
+	c.counter++
+	return strconv.Itoa(c.counter)
+}
+
+func (c *contractConverter) convertOld(old *specir.ExprOld) ast.Expr {
+	if info, exists := c.oldVars[old.Inner]; exists && info.isDeclared {
+		return &ast.Ident{Name: info.name}
+	}
+	return c.Convert(old.Inner)
+}
+
+func convertExpr(conv exprConverter, expr specir.Expr) ast.Expr {
 	switch e := expr.(type) {
 	case *specir.ExprLiteral:
-		return c.convertLiteral(e)
+		return convertLiteral(e)
 	case *specir.ExprVar:
 		return &ast.Ident{Name: e.Name}
 	case *specir.ExprUnary:
-		return c.convertUnary(e)
+		return &ast.UnaryExpr{
+			Op: convertUnaryOp(e.Op),
+			X:  conv.Convert(e.Expr),
+		}
 	case *specir.ExprBinary:
-		return c.convertBinary(e)
+		return &ast.BinaryExpr{
+			X:  conv.Convert(e.Left),
+			Op: convertBinaryOp(e.Op),
+			Y:  conv.Convert(e.Right),
+		}
 	case *specir.ExprCall:
-		return c.convertCall(e)
+		return convertCall(conv, e)
 	case *specir.ExprConditional:
-		return c.convertConditional(e)
-	case *specir.ExprResult:
-		return &ast.Ident{Name: "__result"}
+		return convertConditional(conv, e)
 	case *specir.ExprOld:
-		return c.convertOld(e)
+		panic(`\old is not valid in this context (only allowed in ensures)`)
+	case *specir.ExprResult:
+		panic(`\result is not valid in this context (only allowed in ensures)`)
 	default:
-		panic("Must not happen")
+		panic(fmt.Sprintf("unsupported expression type: %T", expr))
 	}
 }
 
-func (c *Converter) convertLiteral(lit *specir.ExprLiteral) ast.Expr {
+func convertLiteral(lit *specir.ExprLiteral) ast.Expr {
 	switch lit.Kind {
 	case specir.LitBool:
 		if lit.Bool {
@@ -105,37 +148,24 @@ func (c *Converter) convertLiteral(lit *specir.ExprLiteral) ast.Expr {
 			Value: fmt.Sprintf(`"%s"`, lit.Str),
 		}
 	default:
-		panic("Must not happen")
+		panic(fmt.Sprintf("unsupported literal kind: %v", lit.Kind))
 	}
 }
 
-func (c *Converter) convertUnary(unary *specir.ExprUnary) ast.Expr {
-	op := token.ADD
-	switch unary.Op {
+func convertUnaryOp(op specir.UnaryOp) token.Token {
+	switch op {
 	case specir.UnaryPlus:
-		op = token.ADD
+		return token.ADD
 	case specir.UnaryMinus:
-		op = token.SUB
+		return token.SUB
 	case specir.UnaryNot:
-		op = token.NOT
-	}
-
-	return &ast.UnaryExpr{
-		Op: op,
-		X:  c.Convert(unary.Expr),
+		return token.NOT
+	default:
+		return token.ADD
 	}
 }
 
-func (c *Converter) convertBinary(binary *specir.ExprBinary) ast.Expr {
-	op := c.convertBinaryOp(binary.Op)
-	return &ast.BinaryExpr{
-		X:  c.Convert(binary.Left),
-		Op: op,
-		Y:  c.Convert(binary.Right),
-	}
-}
-
-func (c *Converter) convertBinaryOp(op specir.BinaryOp) token.Token {
+func convertBinaryOp(op specir.BinaryOp) token.Token {
 	switch op {
 	case specir.OpAdd:
 		return token.ADD
@@ -164,16 +194,16 @@ func (c *Converter) convertBinaryOp(op specir.BinaryOp) token.Token {
 	case specir.OpOr:
 		return token.LOR
 	case specir.OpXor:
-		return token.NEQ // Для булевых значений XOR через !=
+		return token.XOR
 	default:
 		return token.EQL
 	}
 }
 
-func (c *Converter) convertCall(call *specir.ExprCall) ast.Expr {
+func convertCall(conv exprConverter, call *specir.ExprCall) ast.Expr {
 	args := make([]ast.Expr, len(call.Args))
 	for i, arg := range call.Args {
-		args[i] = c.Convert(arg)
+		args[i] = conv.Convert(arg)
 	}
 	return &ast.CallExpr{
 		Fun:  &ast.Ident{Name: call.Name},
@@ -181,32 +211,32 @@ func (c *Converter) convertCall(call *specir.ExprCall) ast.Expr {
 	}
 }
 
-func (c *Converter) convertConditional(cond *specir.ExprConditional) ast.Expr {
+func convertConditional(conv exprConverter, cond *specir.ExprConditional) ast.Expr {
 	return &ast.CallExpr{
 		Fun: &ast.FuncLit{
 			Type: &ast.FuncType{
 				Params: &ast.FieldList{},
 				Results: &ast.FieldList{
 					List: []*ast.Field{
-						{Type: &ast.Ident{Name: "bool"}}, // предполагаем bool
+						{Type: &ast.Ident{Name: "bool"}},
 					},
 				},
 			},
 			Body: &ast.BlockStmt{
 				List: []ast.Stmt{
 					&ast.IfStmt{
-						Cond: c.Convert(cond.Cond),
+						Cond: conv.Convert(cond.Cond),
 						Body: &ast.BlockStmt{
 							List: []ast.Stmt{
 								&ast.ReturnStmt{
-									Results: []ast.Expr{c.Convert(cond.Then)},
+									Results: []ast.Expr{conv.Convert(cond.Then)},
 								},
 							},
 						},
 						Else: &ast.BlockStmt{
 							List: []ast.Stmt{
 								&ast.ReturnStmt{
-									Results: []ast.Expr{c.Convert(cond.Else)},
+									Results: []ast.Expr{conv.Convert(cond.Else)},
 								},
 							},
 						},
@@ -215,16 +245,4 @@ func (c *Converter) convertConditional(cond *specir.ExprConditional) ast.Expr {
 			},
 		},
 	}
-}
-
-func (c *Converter) convertOld(old *specir.ExprOld) ast.Expr {
-	if info, exists := c.oldVars[old.Inner]; exists && info.isDeclared {
-		return &ast.Ident{Name: info.name}
-	}
-	return c.Convert(old.Inner)
-}
-
-func (c *Converter) NewVar() string {
-	c.counter++
-	return strconv.Itoa(c.counter)
 }

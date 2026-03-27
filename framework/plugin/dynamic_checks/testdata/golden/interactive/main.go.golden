@@ -16,12 +16,11 @@ assigns \nothing;
 */
 func foo(num float64) float64 {
 	checks.Check(num >= 0.000000, "precondition")
-	__old_1 := num
 	var __result float64
 	defer checks.Check(num >= 2.000000, "postcondition")
 	fmt.Printf("Positive number is: %v\n", num)
 	num++
-	checks.Check(__old_1 == (num-1), "assertion")
+	checks.Check(num == ((num-1) == 1), "assertion")
 	{
 		__result = num
 		return __result

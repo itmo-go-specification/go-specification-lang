@@ -15,12 +15,12 @@ func init() {
 }
 
 type DynamicChecksPlugin struct {
-	strictMode bool // true - строгий режим, false - нестрогий
+	strictMode bool
 }
 
 func NewDynamicChecksPlugin() *DynamicChecksPlugin {
 	return &DynamicChecksPlugin{
-		strictMode: true, // по умолчанию строгий режим
+		strictMode: true,
 	}
 }
 
@@ -32,22 +32,19 @@ func (p *DynamicChecksPlugin) Configure(params map[string]interface{}) error {
 	if val, ok := params["strict_mode"]; ok {
 		if strict, ok := val.(bool); ok {
 			p.strictMode = strict
-		} else {
-			if strVal, ok := val.(string); ok {
-				switch strVal {
-				case "true", "strict", "yes":
-					p.strictMode = true
-				case "false", "lenient", "no":
-					p.strictMode = false
-				default:
-					return errors.New("strict_mode: must be boolean or one of: true, false, strict, lenient, yes, no")
-				}
-			} else {
-				return errors.New("strict_mode: must be boolean or string")
+		} else if strVal, ok := val.(string); ok {
+			switch strVal {
+			case "true", "strict", "yes":
+				p.strictMode = true
+			case "false", "lenient", "no":
+				p.strictMode = false
+			default:
+				return errors.New("strict_mode: must be boolean or one of: true, false, strict, lenient, yes, no")
 			}
+		} else {
+			return errors.New("strict_mode: must be boolean or string")
 		}
 	}
-
 	return nil
 }
 
@@ -56,8 +53,15 @@ func (p *DynamicChecksPlugin) Process(astData *data.ASTData) *plugin.PluginResul
 
 	addImport(astData.File)
 
-	processFunctions(astData, result, p.strictMode)
-	processLoops(astData, result)
+	if applyAssertPass(astData) {
+		result.WithASTModified().WithMapModified()
+	}
+	if applyContractPass(astData, p.strictMode) {
+		result.WithASTModified().WithMapModified()
+	}
+	if applyLoopPass(astData) {
+		result.WithASTModified().WithMapModified()
+	}
 
 	return result
 }
@@ -92,10 +96,8 @@ func addImport(file *ast.File) {
 	}
 
 	importDecl := &ast.GenDecl{
-		Tok: token.IMPORT,
-		Specs: []ast.Spec{
-			newImport,
-		},
+		Tok:   token.IMPORT,
+		Specs: []ast.Spec{newImport},
 	}
 
 	file.Decls = append([]ast.Decl{importDecl}, file.Decls...)

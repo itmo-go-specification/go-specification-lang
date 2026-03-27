@@ -6,48 +6,41 @@ import (
 
 	"gpma/framework/data"
 	specir "gpma/framework/gosl/ir"
-	"gpma/framework/plugin"
 )
 
-type LoopChecks struct {
-	BeginStmts []ast.Stmt
-	EndStmts   []ast.Stmt
-}
+func applyLoopPass(astData *data.ASTData) bool {
+	modified := false
 
-func processLoops(astData *data.ASTData, result *plugin.PluginResult) {
 	ast.Inspect(astData.File, func(n ast.Node) bool {
 		switch node := n.(type) {
-		case *ast.ForStmt: // while-style или C-style
+		case *ast.ForStmt:
 			info := astData.TryGetNodeInfo(node)
 			if info != nil && info.LoopSpec != nil {
-				if processForLoop(node, info.LoopSpec) {
-					result.WithASTModified()
+				if applyLoopSpecToFor(node, info.LoopSpec) {
+					modified = true
 				}
-				astData.GetNodeInfo(node).Data["processed"] = true
-				result.WithMapModified()
 			}
-
 		case *ast.RangeStmt:
 			info := astData.TryGetNodeInfo(node)
 			if info != nil && info.LoopSpec != nil {
-				if processRangeLoop(node, info.LoopSpec) {
-					result.WithASTModified()
+				if applyLoopSpecToRange(node, info.LoopSpec) {
+					modified = true
 				}
-				astData.GetNodeInfo(node).Data["processed"] = true
-				result.WithMapModified()
 			}
 		}
 		return true
 	})
+
+	return modified
 }
 
-func processForLoop(forStmt *ast.ForStmt, spec *specir.LoopSpec) bool {
+func applyLoopSpecToFor(forStmt *ast.ForStmt, spec *specir.LoopSpec) bool {
 	if forStmt.Body == nil {
 		return false
 	}
 
-	converter := NewConverter()
-	checks := generateLoopChecks(spec, converter)
+	conv := newContractConverter()
+	checks := generateLoopChecks(spec, conv)
 
 	newBody, modified := insertLoopChecks(forStmt.Body, checks)
 	forStmt.Body = &ast.BlockStmt{List: newBody}
@@ -55,13 +48,13 @@ func processForLoop(forStmt *ast.ForStmt, spec *specir.LoopSpec) bool {
 	return modified
 }
 
-func processRangeLoop(rangeStmt *ast.RangeStmt, spec *specir.LoopSpec) bool {
+func applyLoopSpecToRange(rangeStmt *ast.RangeStmt, spec *specir.LoopSpec) bool {
 	if rangeStmt.Body == nil {
 		return false
 	}
 
-	converter := NewConverter()
-	checks := generateLoopChecks(spec, converter)
+	conv := newContractConverter()
+	checks := generateLoopChecks(spec, conv)
 
 	newBody, modified := insertLoopChecks(rangeStmt.Body, checks)
 	rangeStmt.Body = &ast.BlockStmt{List: newBody}
@@ -69,37 +62,42 @@ func processRangeLoop(rangeStmt *ast.RangeStmt, spec *specir.LoopSpec) bool {
 	return modified
 }
 
-func generateLoopChecks(spec *specir.LoopSpec, converter *Converter) *LoopChecks {
-	checks := &LoopChecks{}
+type loopChecks struct {
+	beginStmts []ast.Stmt
+	endStmts   []ast.Stmt
+}
+
+func generateLoopChecks(spec *specir.LoopSpec, conv *contractConverter) *loopChecks {
+	result := &loopChecks{}
 
 	for _, inv := range spec.Invariants {
-		condition := converter.Convert(inv.Expr)
+		condition := conv.Convert(inv.Expr)
 		checkCall := createCheckCall(condition, "loop invariant", inv.Label)
-		checks.BeginStmts = append(checks.BeginStmts, &ast.ExprStmt{X: checkCall})
+		result.beginStmts = append(result.beginStmts, &ast.ExprStmt{X: checkCall})
 	}
 
 	for _, inv := range spec.Invariants {
-		condition := converter.Convert(inv.Expr)
+		condition := conv.Convert(inv.Expr)
 		checkCall := createCheckCall(condition, "loop invariant", inv.Label)
-		checks.EndStmts = append(checks.EndStmts, &ast.ExprStmt{X: checkCall})
+		result.endStmts = append(result.endStmts, &ast.ExprStmt{X: checkCall})
 	}
 
 	if spec.Variant != nil {
-		variantExpr := converter.Convert(spec.Variant)
+		variantExpr := conv.Convert(spec.Variant)
 
-		beforeVarName := "__variant_before_" + converter.NewVar()
-		checks.BeginStmts = append(checks.BeginStmts, &ast.AssignStmt{
+		beforeVarName := "__variant_before_" + conv.newVar()
+		result.beginStmts = append(result.beginStmts, &ast.AssignStmt{
 			Lhs: []ast.Expr{&ast.Ident{Name: beforeVarName}},
 			Tok: token.DEFINE,
 			Rhs: []ast.Expr{variantExpr},
 		})
 
-		afterVarName := "__variant_after_" + converter.NewVar()
-		checks.EndStmts = append(checks.EndStmts,
+		afterVarName := "__variant_after_" + conv.newVar()
+		result.endStmts = append(result.endStmts,
 			&ast.AssignStmt{
 				Lhs: []ast.Expr{&ast.Ident{Name: afterVarName}},
 				Tok: token.ASSIGN,
-				Rhs: []ast.Expr{converter.Convert(spec.Variant)},
+				Rhs: []ast.Expr{conv.Convert(spec.Variant)},
 			},
 			&ast.ExprStmt{
 				X: createCheckCall(
@@ -115,10 +113,9 @@ func generateLoopChecks(spec *specir.LoopSpec, converter *Converter) *LoopChecks
 		)
 	}
 
-	return checks
+	return result
 }
 
-func insertLoopChecks(body *ast.BlockStmt, checks *LoopChecks) (newList []ast.Stmt, modified bool) {
+func insertLoopChecks(body *ast.BlockStmt, checks *loopChecks) (newList []ast.Stmt, modified bool) {
 	panic("NOT IMPLEMENTED")
-	return newList, modified
 }

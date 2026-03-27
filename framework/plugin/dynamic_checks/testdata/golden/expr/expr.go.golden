@@ -1,0 +1,225 @@
+package labeled
+
+import checks "gpma/framework/plugin/dynamic_checks/check"
+
+/*
+@
+requires x >= 0;
+ensures \result == x + 1;
+assigns \nothing;
+*/
+func AddOne(x int) int {
+	checks.Check(x >= 0, "precondition")
+	var __result int
+	defer checks.Check(__result == x+1, "postcondition")
+	{
+		__result = x + 1
+		return __result
+	}
+}
+
+/*
+@
+requires b > a;
+ensures \result == b - a;
+assigns \nothing;
+*/
+func Diff(a, b int) int {
+	checks.Check(b > a, "precondition")
+	var __result int
+	defer checks.Check(__result == b-a, "postcondition")
+	{
+		__result = b - a
+		return __result
+	}
+}
+
+/*
+@
+requires n >= 0;
+ensures \result == n * 2;
+assigns \nothing;
+*/
+func Double(n int) int {
+	checks.Check(n >= 0, "precondition")
+	var __result int
+	defer checks.Check(__result == n*2, "postcondition")
+	{
+		__result = n * 2
+		return __result
+	}
+}
+
+/*
+@
+requires d != 0;
+ensures \result == n / d;
+assigns \nothing;
+*/
+func Divide(n, d int) int {
+	checks.Check(d != 0, "precondition")
+	var __result int
+	defer checks.Check(__result == n/d, "postcondition")
+	{
+		__result = n / d
+		return __result
+	}
+}
+
+/*
+@
+requires d != 0;
+ensures \result == n % d;
+assigns \nothing;
+*/
+func Modulo(n, d int) int {
+	checks.Check(d != 0, "precondition")
+	var __result int
+	defer checks.Check(__result == n%d, "postcondition")
+	{
+		__result = n % d
+		return __result
+	}
+}
+
+/*
+@
+requires x >= 0;
+ensures \result >= 0;
+assigns \nothing;
+*/
+func Abs(x int) int {
+	checks.Check(x >= 0, "precondition")
+	var __result int
+	defer checks.Check(__result >= 0, "postcondition")
+	if x < 0 {
+		{
+			__result = -x
+			return __result
+		}
+	}
+	{
+		__result = x
+		return __result
+	}
+}
+
+/*
+@
+requires !(x == 0);
+ensures \result != 0;
+assigns \nothing;
+*/
+func Identity(x int) int {
+	checks.Check(!(x == 0), "precondition")
+	var __result int
+	defer checks.Check(__result != 0, "postcondition")
+	{
+		__result = x
+		return __result
+	}
+}
+
+/*
+@
+requires lo <= hi;
+ensures \result >= lo;
+ensures \result <= hi;
+assigns \nothing;
+*/
+func Clamp(x, lo, hi int) int {
+	checks.Check(lo <= hi, "precondition")
+	var __result int
+	defer checks.Check(__result >= lo, "postcondition")
+	defer checks.Check(__result <= hi, "postcondition")
+	if x < lo {
+		{
+			__result = lo
+			return __result
+		}
+	}
+	if x > hi {
+		{
+			__result = hi
+			return __result
+		}
+	}
+	{
+		__result = x
+		return __result
+	}
+}
+
+/*
+@
+requires n > 0;
+ensures \result == \old(n) + 1;
+assigns \nothing;
+*/
+func Increment(n int) int {
+	checks.Check(n > 0, "precondition")
+	__old_1 := n
+	var __result int
+	defer checks.Check(__result == __old_1+1, "postcondition")
+	{
+		__result = n + 1
+		return __result
+	}
+}
+
+/*
+@
+requires \true;
+ensures \result == 42;
+assigns \nothing;
+*/
+func FortyTwo() int {
+	checks.Check(true, "precondition")
+	var __result int
+	defer checks.Check(__result == 42, "postcondition")
+	{
+		__result = 42
+		return __result
+	}
+}
+
+/*
+@
+requires n >= 0;
+ensures \result == n * (n + 1) / 2;
+assigns \nothing;
+*/
+func TriangleNumber(n int) int {
+	checks.Check(n >= 0, "precondition")
+	var __result int
+	defer checks.Check(__result == n*(n+1)/2, "postcondition")
+	{
+		__result = n * (n + 1) / 2
+		return __result
+	}
+}
+
+func AssertAdd(x, y int) {
+	checks.Check(x+y >= x, "assertion")
+
+	_ = x
+	_ = y
+}
+
+func AssertMul(x int) {
+	checks.Check(x*2 == x+x, "assertion")
+
+	_ = x
+}
+
+func AssertSub(x int) {
+	checks.Check(x-x == 0, "assertion")
+
+	_ = x
+}
+
+func AssertNeq(x int) {
+	checks.Check(x != x+1, "assertion")
+
+	_ = x
+}

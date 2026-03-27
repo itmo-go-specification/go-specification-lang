@@ -138,6 +138,13 @@ func (b *ACSLBuilder) predToExpr(p acsl.IPredContext) specir.Expr {
 	return &specir.ExprVar{BaseExpr: specir.BaseExpr{Span: b.blockSpan(p)}, Name: p.GetText()}
 }
 
+// VisitSyntactic_naming_pred handles "label: pred" inside predicate position.
+// It delegates to parseNamedPred so the label is preserved in the returned NamedPredicate.
+func (b *ACSLBuilder) VisitSyntactic_naming_pred(ctx *acsl.Syntactic_naming_predContext) interface{} {
+	log.Debugf("VisitSyntactic_naming_pred text:%s\n", ctx.GetText())
+	return b.parseNamedPred(ctx)
+}
+
 func (b *ACSLBuilder) VisitLogical_true_pred(ctx *acsl.Logical_true_predContext) interface{} {
 	log.Debug("VisitLogical_true_pred text:", ctx.GetText())
 	return &specir.ExprLiteral{
@@ -197,6 +204,16 @@ func (b *ACSLBuilder) VisitComparison_pred(ctx *acsl.Comparison_predContext) int
 
 func relOpToBinary(s string) specir.BinaryOp {
 	switch s {
+	case "+":
+		return specir.OpAdd
+	case "-":
+		return specir.OpSub
+	case "*":
+		return specir.OpMul
+	case "/":
+		return specir.OpDiv
+	case "%":
+		return specir.OpMod
 	case "==":
 		return specir.OpEq
 	case "!=":
@@ -209,7 +226,16 @@ func relOpToBinary(s string) specir.BinaryOp {
 		return specir.OpLt
 	case ">":
 		return specir.OpGt
+	case "&&":
+		return specir.OpAnd
+	case "||":
+		return specir.OpOr
+	case "^^":
+		return specir.OpXor
+	case "==>":
+		return specir.OpImplies
 	default:
+		log.Warnf("relOpToBinary: unknown operator %q, defaulting to OpEq", s)
 		return specir.OpEq
 	}
 }

@@ -3,17 +3,17 @@ package clamp
 import checks "gpma/framework/plugin/dynamic_checks/check"
 
 func clamp(x int, min int, max int) int {
-	checks.Check(min <= max, "assertion")
+	checks.CheckAt(min <= max, "../../../samples/projects/clamp/clamp.go", 4, "assertion")
 
 	if x < min {
 		return min
 	}
-	checks.Check(x >= min, "assertion")
+	checks.CheckAt(x >= min, "../../../samples/projects/clamp/clamp.go", 10, "assertion")
 
 	if x > max {
 		return max
 	}
-	checks.Check(x >= min && x <= max, "assertion")
+	checks.CheckAt(x >= min && x <= max, "../../../samples/projects/clamp/clamp.go", 16, "assertion")
 
 	return x
 }

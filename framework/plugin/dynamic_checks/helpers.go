@@ -4,9 +4,13 @@ import (
 	"fmt"
 	"go/ast"
 	"go/token"
+
+	specir "gpma/framework/gosl/ir"
 )
 
-func createCheckCall(condition ast.Expr, prefix, label string) *ast.CallExpr {
+// createCheckCall generates a checks.CheckAt call with the source location
+// (file + line from the original annotated .go file).
+func createCheckCall(condition ast.Expr, prefix, label string, srcPos specir.Position) *ast.CallExpr {
 	var message string
 	if label != "" {
 		message = fmt.Sprintf(`"%s: %s"`, prefix, label)
@@ -14,14 +18,14 @@ func createCheckCall(condition ast.Expr, prefix, label string) *ast.CallExpr {
 		message = fmt.Sprintf(`"%s"`, prefix)
 	}
 
+	// checks.CheckAt(condition, "original.go", 42, "precondition")
 	return &ast.CallExpr{
-		Fun: &ast.Ident{Name: "checks.Check"},
+		Fun: &ast.Ident{Name: "checks.CheckAt"},
 		Args: []ast.Expr{
 			condition,
-			&ast.BasicLit{
-				Kind:  token.STRING,
-				Value: message,
-			},
+			&ast.BasicLit{Kind: token.STRING, Value: fmt.Sprintf(`"%s"`, srcPos.File)},
+			&ast.BasicLit{Kind: token.INT, Value: fmt.Sprintf(`%d`, srcPos.Line)},
+			&ast.BasicLit{Kind: token.STRING, Value: message},
 		},
 	}
 }

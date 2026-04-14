@@ -15,12 +15,12 @@ ensures num >= 2.0;
 assigns \nothing;
 */
 func foo(num float64) float64 {
-	checks.Check(num >= 0.000000, "precondition")
+	checks.CheckAt(num >= 0.000000, "../../../samples/projects/interactive/main.go", 12, "precondition")
 	var __result float64
-	defer checks.Check(num >= 2.000000, "postcondition")
+	defer checks.CheckAt(num >= 2.000000, "../../../samples/projects/interactive/main.go", 13, "postcondition")
 	fmt.Printf("Positive number is: %v\n", num)
 	num++
-	checks.Check(num == (num-1)+1, "assertion")
+	checks.CheckAt(num == (num-1)+1, "../../../samples/projects/interactive/main.go", 19, "assertion")
 	{
 		__result = num
 		return __result

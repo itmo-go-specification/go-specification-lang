@@ -11,9 +11,9 @@ ensures ((!(mode == false)) || (\result == x)) &&
 	((!(mode == true)) || (\result == -x));
 */
 func mayNegate(x int, mode bool) int {
-	checks.Check(mode == true || mode == false, "precondition")
+	checks.CheckAt(mode == true || mode == false, "../../../samples/projects/may_negate/may_negate.go", 4, "precondition")
 	var __result int
-	defer checks.Check((!(mode == false) || __result == x) && (!(mode == true) || __result == -x), "postcondition")
+	defer checks.CheckAt((!(mode == false) || __result == x) && (!(mode == true) || __result == -x), "../../../samples/projects/may_negate/may_negate.go", 6, "postcondition")
 	if mode {
 		{
 			__result = -x

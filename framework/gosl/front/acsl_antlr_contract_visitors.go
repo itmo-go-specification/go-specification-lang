@@ -62,7 +62,10 @@ func (b *ACSLBuilder) VisitRequires_clause(ctx *acsl.Requires_clauseContext) int
 	if ctx == nil {
 		return nil
 	}
-	return b.parseNamedPred(ctx.Pred())
+	np := b.parseNamedPred(ctx.Pred())
+	// StartPos/EndPos span the entire "requires <pred>;" clause.
+	np.StartPos, np.EndPos = b.blockPositions(ctx)
+	return np
 }
 
 func (b *ACSLBuilder) VisitEnsures_clause(ctx *acsl.Ensures_clauseContext) interface{} {
@@ -70,5 +73,8 @@ func (b *ACSLBuilder) VisitEnsures_clause(ctx *acsl.Ensures_clauseContext) inter
 	if ctx == nil {
 		return nil
 	}
-	return b.parseNamedPred(ctx.Pred())
+	np := b.parseNamedPred(ctx.Pred())
+	// StartPos/EndPos span the entire "ensures <pred>;" clause.
+	np.StartPos, np.EndPos = b.blockPositions(ctx)
+	return np
 }

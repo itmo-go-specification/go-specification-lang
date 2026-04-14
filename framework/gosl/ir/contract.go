@@ -6,9 +6,11 @@ package specir
 // Expr: "0 <= \result <= n"
 
 type NamedPredicate struct {
-	Label string
-	Expr  Expr
-	Span  Span
+	Label    string
+	Expr     Expr
+	Span     Span
+	StartPos Position // position of the clause keyword (requires/ensures) in the source file
+	EndPos   Position // end position of the clause (after the trailing semicolon)
 }
 
 // LocationSetKind — location

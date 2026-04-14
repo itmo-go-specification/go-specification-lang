@@ -11,7 +11,7 @@ requires (f == \true);
 assigns \nothing;
 */
 func check(f bool) {
-	checks.Check(f == true, "precondition")
+	checks.CheckAt(f == true, "../../../samples/projects/simple/main.go", 9, "precondition")
 	fmt.Printf("Passed\n")
 }
 

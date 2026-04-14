@@ -72,13 +72,13 @@ func generateLoopChecks(spec *specir.LoopSpec, conv *contractConverter) *loopChe
 
 	for _, inv := range spec.Invariants {
 		condition := conv.Convert(inv.Expr)
-		checkCall := createCheckCall(condition, "loop invariant", inv.Label)
+		checkCall := createCheckCall(condition, "loop invariant", inv.Label, spec.StartPos)
 		result.beginStmts = append(result.beginStmts, &ast.ExprStmt{X: checkCall})
 	}
 
 	for _, inv := range spec.Invariants {
 		condition := conv.Convert(inv.Expr)
-		checkCall := createCheckCall(condition, "loop invariant", inv.Label)
+		checkCall := createCheckCall(condition, "loop invariant", inv.Label, spec.StartPos)
 		result.endStmts = append(result.endStmts, &ast.ExprStmt{X: checkCall})
 	}
 
@@ -108,6 +108,7 @@ func generateLoopChecks(spec *specir.LoopSpec, conv *contractConverter) *loopChe
 					},
 					"loop variant",
 					"",
+					spec.StartPos,
 				),
 			},
 		)

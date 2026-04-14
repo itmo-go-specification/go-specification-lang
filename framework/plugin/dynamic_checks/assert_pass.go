@@ -20,7 +20,7 @@ func applyAssertPass(astData *data.ASTData) bool {
 		for _, stmt := range block.List {
 			if info := astData.TryGetNodeInfo(stmt); info != nil && info.Asserts != nil {
 				condition := conv.Convert(info.Asserts.Assertion.Expr)
-				checkStmt := &ast.ExprStmt{X: createCheckCall(condition, "assertion", info.Asserts.Assertion.Label)}
+				checkStmt := &ast.ExprStmt{X: createCheckCall(condition, "assertion", info.Asserts.Assertion.Label, info.Asserts.StartPos)}
 				newList = append(newList, checkStmt)
 				modified = true
 			}

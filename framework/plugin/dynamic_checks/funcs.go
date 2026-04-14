@@ -58,7 +58,7 @@ func applyContractToFunc(funcDecl *ast.FuncDecl, contract *specir.FuncContract, 
 
 		if strictMode {
 			newStmts = append(newStmts, &ast.ExprStmt{
-				X: createCheckCall(condition, "precondition", req.Label),
+				X: createCheckCall(condition, "precondition", req.Label, req.StartPos),
 			})
 		} else {
 			// if !condition { __preconditions_passed = false }
@@ -97,7 +97,7 @@ func applyContractToFunc(funcDecl *ast.FuncDecl, contract *specir.FuncContract, 
 
 	for _, ens := range contract.Ensures {
 		condition := conv.Convert(ens.Expr)
-		checkCall := createCheckCall(condition, "postcondition", ens.Label)
+		checkCall := createCheckCall(condition, "postcondition", ens.Label, ens.StartPos)
 
 		if strictMode || !hasRequires {
 			newStmts = append(newStmts, &ast.DeferStmt{Call: checkCall})

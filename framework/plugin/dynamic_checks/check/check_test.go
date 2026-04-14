@@ -7,14 +7,14 @@ import (
 	"testing"
 )
 
-func TestCheck_TrueCondition_NoPanic(t *testing.T) {
+func TestCheckAt_TrueCondition_NoPanic(t *testing.T) {
 	t.Setenv(modeEnv, "panic")
-	Check(true)
-	Check(true, "should not panic")
-	Check(true, "msg1", "msg2")
+	CheckAt(true, "test", 1)
+	CheckAt(true, "test", 1, "should not panic")
+	CheckAt(true, "test", 1, "msg1", "msg2")
 }
 
-func TestCheck_FalseCondition_PanicMode(t *testing.T) {
+func TestCheckAt_FalseCondition_PanicMode(t *testing.T) {
 	t.Setenv(modeEnv, "panic")
 
 	defer func() {
@@ -29,12 +29,15 @@ func TestCheck_FalseCondition_PanicMode(t *testing.T) {
 		if !strings.Contains(msg, "check failed at") {
 			t.Errorf("panic message missing prefix, got: %s", msg)
 		}
+		if !strings.Contains(msg, "test.go:42") {
+			t.Errorf("panic message missing source location, got: %s", msg)
+		}
 	}()
 
-	Check(false)
+	CheckAt(false, "test.go", 42)
 }
 
-func TestCheck_FalseCondition_PanicMode_WithMessage(t *testing.T) {
+func TestCheckAt_FalseCondition_PanicMode_WithMessage(t *testing.T) {
 	t.Setenv(modeEnv, "panic")
 
 	defer func() {
@@ -48,10 +51,10 @@ func TestCheck_FalseCondition_PanicMode_WithMessage(t *testing.T) {
 		}
 	}()
 
-	Check(false, "precondition violated")
+	CheckAt(false, "test.go", 1, "precondition violated")
 }
 
-func TestCheck_FalseCondition_ConsoleMode(t *testing.T) {
+func TestCheckAt_FalseCondition_ConsoleMode(t *testing.T) {
 	t.Setenv(modeEnv, "console")
 
 	oldStderr := os.Stderr
@@ -61,7 +64,7 @@ func TestCheck_FalseCondition_ConsoleMode(t *testing.T) {
 	}
 	os.Stderr = w
 
-	Check(false, "console test")
+	CheckAt(false, "test.go", 1, "console test")
 
 	w.Close()
 	os.Stderr = oldStderr
@@ -78,19 +81,19 @@ func TestCheck_FalseCondition_ConsoleMode(t *testing.T) {
 	}
 }
 
-func TestCheck_FalseCondition_SilentMode(t *testing.T) {
+func TestCheckAt_FalseCondition_SilentMode(t *testing.T) {
 	t.Setenv(modeEnv, "silent")
-	Check(false, "should be silent")
+	CheckAt(false, "test.go", 1, "should be silent")
 }
 
-func TestCheck_FalseCondition_FileMode(t *testing.T) {
+func TestCheckAt_FalseCondition_FileMode(t *testing.T) {
 	tmpDir := t.TempDir()
 	logPath := filepath.Join(tmpDir, "check.log")
 
 	t.Setenv(modeEnv, "file")
 	t.Setenv(pathEnv, logPath)
 
-	Check(false, "file mode test")
+	CheckAt(false, "test.go", 1, "file mode test")
 
 	data, err := os.ReadFile(logPath)
 	if err != nil {
@@ -106,15 +109,15 @@ func TestCheck_FalseCondition_FileMode(t *testing.T) {
 	}
 }
 
-func TestCheck_FileMode_MultipleWrites(t *testing.T) {
+func TestCheckAt_FileMode_MultipleWrites(t *testing.T) {
 	tmpDir := t.TempDir()
 	logPath := filepath.Join(tmpDir, "check.log")
 
 	t.Setenv(modeEnv, "file")
 	t.Setenv(pathEnv, logPath)
 
-	Check(false, "first")
-	Check(false, "second")
+	CheckAt(false, "test.go", 1, "first")
+	CheckAt(false, "test.go", 2, "second")
 
 	data, err := os.ReadFile(logPath)
 	if err != nil {
@@ -127,7 +130,7 @@ func TestCheck_FileMode_MultipleWrites(t *testing.T) {
 	}
 }
 
-func TestCheck_FileMode_NoPath_Panics(t *testing.T) {
+func TestCheckAt_FileMode_NoPath_Panics(t *testing.T) {
 	t.Setenv(modeEnv, "file")
 	t.Setenv(pathEnv, "")
 
@@ -142,10 +145,10 @@ func TestCheck_FileMode_NoPath_Panics(t *testing.T) {
 		}
 	}()
 
-	Check(false, "no path")
+	CheckAt(false, "test.go", 1, "no path")
 }
 
-func TestCheck_DefaultMode_IsPanic(t *testing.T) {
+func TestCheckAt_DefaultMode_IsPanic(t *testing.T) {
 	t.Setenv(modeEnv, "")
 
 	defer func() {
@@ -155,7 +158,7 @@ func TestCheck_DefaultMode_IsPanic(t *testing.T) {
 		}
 	}()
 
-	Check(false)
+	CheckAt(false, "test.go", 1)
 }
 
 func TestParseMode_ValidInputs(t *testing.T) {

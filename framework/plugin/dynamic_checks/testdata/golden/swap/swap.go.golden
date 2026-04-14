@@ -10,7 +10,7 @@ ensures (*p == \old(*q)) && (*q == \old(*p));
 func swap(p *int, q *int) {
 	__old_1 := *q
 	__old_2 := *p
-	defer checks.Check(*p == __old_1 && *q == __old_2, "postcondition")
+	defer checks.CheckAt(*p == __old_1 && *q == __old_2, "../../../samples/projects/swap/swap.go", 5, "postcondition")
 	save := *p
 	*p = *q
 	*q = save

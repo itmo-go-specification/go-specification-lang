@@ -115,10 +115,13 @@ type ExprConditional struct {
 
 func (*ExprConditional) exprNode() {}
 
-// ExprResult - \result.
-// term ::= \result
+// ExprResult - \result or \result_N (for multi-return functions).
+// Index 0 corresponds to \result (first / only return value).
+// Index N corresponds to \result_N (the N-th return value, 0-based).
+// term ::= \result | \result_N
 type ExprResult struct {
 	BaseExpr
+	Index int
 }
 
 func (*ExprResult) exprNode() {}

@@ -10,28 +10,28 @@ ensures \result <= max;
 */
 func clamp(x int, min int, max int) int {
 	checks.CheckAt(min <= max, "../../../samples/projects/clamp_both/clamp.go", 4, "precondition")
-	var __result int
-	defer checks.CheckAt(__result >= min, "../../../samples/projects/clamp_both/clamp.go", 5, "postcondition")
-	defer checks.CheckAt(__result <= max, "../../../samples/projects/clamp_both/clamp.go", 6, "postcondition")
+	var __result_0 int
+	defer checks.CheckAt(__result_0 >= min, "../../../samples/projects/clamp_both/clamp.go", 5, "postcondition")
+	defer checks.CheckAt(__result_0 <= max, "../../../samples/projects/clamp_both/clamp.go", 6, "postcondition")
 	checks.CheckAt(min <= max, "../../../samples/projects/clamp_both/clamp.go", 9, "assertion")
 
 	if x < min {
 		{
-			__result = min
-			return __result
+			__result_0 = min
+			return __result_0
 		}
 	}
 	checks.CheckAt(x >= min, "../../../samples/projects/clamp_both/clamp.go", 15, "assertion")
 
 	if x > max {
 		{
-			__result = max
-			return __result
+			__result_0 = max
+			return __result_0
 		}
 	}
 	checks.CheckAt(x >= min && x <= max, "../../../samples/projects/clamp_both/clamp.go", 21, "assertion")
 	{
-		__result = x
-		return __result
+		__result_0 = x
+		return __result_0
 	}
 }

@@ -86,13 +86,17 @@ func applyContractToFunc(funcDecl *ast.FuncDecl, contract *specir.FuncContract, 
 		oldInfo.isDeclared = true
 	}
 
+	// Determine how many return values the function has.
+	// We inject __result_N variables only when there are ensures clauses.
 	hasEnsures := len(contract.Ensures) > 0
-	hasResultVar := hasEnsures &&
-		funcDecl.Type.Results != nil &&
-		len(funcDecl.Type.Results.List) == 1
+	nResults := 0
+	if hasEnsures && funcDecl.Type.Results != nil {
+		nResults = resultCount(funcDecl)
+	}
+	hasResultVars := nResults > 0
 
-	if hasResultVar {
-		newStmts = append(newStmts, createResultDeclaration(funcDecl))
+	if hasResultVars {
+		newStmts = append(newStmts, createResultDeclarations(funcDecl)...)
 	}
 
 	for _, ens := range contract.Ensures {
@@ -128,8 +132,8 @@ func applyContractToFunc(funcDecl *ast.FuncDecl, contract *specir.FuncContract, 
 
 	funcDecl.Body.List = append(newStmts, funcDecl.Body.List...)
 
-	if hasResultVar {
-		replaceReturnsInBlock(funcDecl.Body)
+	if hasResultVars {
+		replaceReturnsInBlock(funcDecl.Body, nResults)
 	}
 
 	return true

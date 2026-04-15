@@ -9,17 +9,17 @@ ensures (\result == a) || (\result == b);
 ensures (\result <= a) && (\result <= b);
 */
 func min(a, b int) int {
-	var __result int
-	defer checks.CheckAt(__result == a || __result == b, "../../../samples/projects/min/min.go", 5, "postcondition")
-	defer checks.CheckAt(__result <= a && __result <= b, "../../../samples/projects/min/min.go", 6, "postcondition")
+	var __result_0 int
+	defer checks.CheckAt(__result_0 == a || __result_0 == b, "../../../samples/projects/min/min.go", 5, "postcondition")
+	defer checks.CheckAt(__result_0 <= a && __result_0 <= b, "../../../samples/projects/min/min.go", 6, "postcondition")
 	if a < b {
 		{
-			__result = a
-			return __result
+			__result_0 = a
+			return __result_0
 		}
 	}
 	{
-		__result = b
-		return __result
+		__result_0 = b
+		return __result_0
 	}
 }

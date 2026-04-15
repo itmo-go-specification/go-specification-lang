@@ -78,6 +78,8 @@ term
 // oldandresult.tex
     | '\\old' '(' term ')'                              # old_term
     | '\\result'                                        # result_term
+// own additions: indexed result for multi-return functions
+    | '\\result_' Constant                              # result_n_term
 // memory.tex:
     | '\\null'                                          # null_term
     | '\\base_addr' one_label? '(' term ')'             # base_addr_term

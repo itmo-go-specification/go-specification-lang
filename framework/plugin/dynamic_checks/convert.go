@@ -48,7 +48,10 @@ func (c *contractConverter) Convert(expr specir.Expr) ast.Expr {
 	case *specir.ExprOld:
 		return c.convertOld(e)
 	case *specir.ExprResult:
-		return &ast.Ident{Name: "__result"}
+		if e.Index == 0 {
+			return &ast.Ident{Name: "__result_0"}
+		}
+		return &ast.Ident{Name: fmt.Sprintf("__result_%d", e.Index)}
 	default:
 		return convertExpr(c, expr)
 	}
@@ -116,7 +119,7 @@ func convertExpr(conv exprConverter, expr specir.Expr) ast.Expr {
 	case *specir.ExprOld:
 		panic(`\old is not valid in this context (only allowed in ensures)`)
 	case *specir.ExprResult:
-		panic(`\result is not valid in this context (only allowed in ensures)`)
+		panic(`\result / \result_N is not valid in this context (only allowed in ensures)`)
 	default:
 		panic(fmt.Sprintf("unsupported expression type: %T", expr))
 	}

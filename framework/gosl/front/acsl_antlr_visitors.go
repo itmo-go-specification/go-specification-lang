@@ -407,7 +407,20 @@ func (b *ACSLBuilder) VisitOld_term(ctx *acsl.Old_termContext) interface{} {
 
 func (b *ACSLBuilder) VisitResult_term(ctx *acsl.Result_termContext) interface{} {
 	log.Debug("VisitResult_term text:", ctx.GetText())
-	return &specir.ExprResult{BaseExpr: specir.BaseExpr{Span: b.blockSpan(ctx)}}
+	return &specir.ExprResult{BaseExpr: specir.BaseExpr{Span: b.blockSpan(ctx)}, Index: 0}
+}
+
+// VisitResult_n_term handles \result_N — indexed result for multi-return functions.
+// \result_0 is equivalent to \result (first return value).
+func (b *ACSLBuilder) VisitResult_n_term(ctx *acsl.Result_n_termContext) interface{} {
+	log.Debug("VisitResult_n_term text:", ctx.GetText())
+	idx := 0
+	if tok := ctx.Constant(); tok != nil {
+		if n, err := strconv.Atoi(tok.GetText()); err == nil {
+			idx = n
+		}
+	}
+	return &specir.ExprResult{BaseExpr: specir.BaseExpr{Span: b.blockSpan(ctx)}, Index: idx}
 }
 
 func (b *ACSLBuilder) VisitParentheses_pred(ctx *acsl.Parentheses_predContext) interface{} {

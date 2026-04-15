@@ -86,17 +86,23 @@ func applyContractToFunc(funcDecl *ast.FuncDecl, contract *specir.FuncContract, 
 		oldInfo.isDeclared = true
 	}
 
-	// Determine how many return values the function has.
-	// We inject __result_N variables only when there are ensures clauses.
+	// Determine return value metadata.
+	// We inject result variables only when there are ensures clauses.
 	hasEnsures := len(contract.Ensures) > 0
-	nResults := 0
+	var resultInfos []resultInfo
 	if hasEnsures && funcDecl.Type.Results != nil {
-		nResults = resultCount(funcDecl)
+		resultInfos = collectResultInfos(funcDecl)
 	}
-	hasResultVars := nResults > 0
+	hasResultVars := len(resultInfos) > 0
+
+	// Let the converter resolve \result / \result_N to the correct variable names
+	// (named return values use their source names; unnamed use __result_N).
+	if hasResultVars {
+		conv.SetResultInfos(resultInfos)
+	}
 
 	if hasResultVars {
-		newStmts = append(newStmts, createResultDeclarations(funcDecl)...)
+		newStmts = append(newStmts, createResultDeclarations(resultInfos)...)
 	}
 
 	for _, ens := range contract.Ensures {
@@ -133,7 +139,7 @@ func applyContractToFunc(funcDecl *ast.FuncDecl, contract *specir.FuncContract, 
 	funcDecl.Body.List = append(newStmts, funcDecl.Body.List...)
 
 	if hasResultVars {
-		replaceReturnsInBlock(funcDecl.Body, nResults)
+		replaceReturnsInBlock(funcDecl.Body, resultInfos)
 	}
 
 	return true

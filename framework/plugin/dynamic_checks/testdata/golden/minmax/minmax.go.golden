@@ -1,0 +1,23 @@
+package minmax
+
+import checks "gpma/framework/plugin/dynamic_checks/check"
+
+/*
+@
+requires len(a) > 0;
+ensures \result_0 <= \result_1;
+*/
+func MinMax(a []int) (min, max int) {
+	checks.CheckAt(len(a) > 0, "../../../samples/projects/minmax/minmax.go", 5, "precondition")
+	defer checks.CheckAt(min <= max, "../../../samples/projects/minmax/minmax.go", 6, "postcondition")
+	min, max = a[0], a[0]
+	for _, v := range a[1:] {
+		if v < min {
+			min = v
+		}
+		if v > max {
+			max = v
+		}
+	}
+	return
+}

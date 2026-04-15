@@ -25,9 +25,10 @@ func (c *baseConverter) Convert(expr specir.Expr) ast.Expr {
 // Extends baseConverter with support for \old and \result.
 // Use for requires and ensures clauses.
 type contractConverter struct {
-	oldVars  map[specir.Expr]*oldVarInfo
-	oldOrder []specir.Expr
-	counter  int
+	oldVars     map[specir.Expr]*oldVarInfo
+	oldOrder    []specir.Expr
+	counter     int
+	resultInfos []resultInfo // nil means use __result_N fallback
 }
 
 type oldVarInfo struct {
@@ -43,14 +44,20 @@ func newContractConverter() *contractConverter {
 	}
 }
 
+func (c *contractConverter) SetResultInfos(infos []resultInfo) {
+	c.resultInfos = infos
+}
+
 func (c *contractConverter) Convert(expr specir.Expr) ast.Expr {
 	switch e := expr.(type) {
 	case *specir.ExprOld:
 		return c.convertOld(e)
 	case *specir.ExprResult:
-		if e.Index == 0 {
-			return &ast.Ident{Name: "__result_0"}
+		// If we have resultInfos (named or unnamed), use the resolved name.
+		if c.resultInfos != nil && e.Index >= 0 && e.Index < len(c.resultInfos) {
+			return &ast.Ident{Name: c.resultInfos[e.Index].name}
 		}
+		// Fallback: generate __result_N.
 		return &ast.Ident{Name: fmt.Sprintf("__result_%d", e.Index)}
 	default:
 		return convertExpr(c, expr)

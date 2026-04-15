@@ -1,0 +1,10 @@
+method min(a: Int, b: Int) returns (res: Int)
+    ensures res == a || res == b
+    ensures res <= a && res <= b
+{
+    if (a < b) {
+        res := a
+    } else {
+        res := b
+    }
+}

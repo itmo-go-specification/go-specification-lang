@@ -1,0 +1,7 @@
+method swap(a: Int, b : Int) returns (result_a : Int, result_b : Int)
+  ensures result_a == old(b)
+  ensures result_b == old(a)
+{
+    result_a := b
+    result_b := a
+}

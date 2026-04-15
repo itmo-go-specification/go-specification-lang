@@ -1,6 +1,6 @@
 # Плагин `dynamic_checks`
 
-Плагин читает ACSL-аннотации в комментариях и вставляет в код вызовы `checks.Check(...)`, которые проверяют контракты во время выполнения программы. Оригинальные файлы не изменяются — результат применяется через `go build --overlay`.
+Плагин читает ACSL-аннотации в комментариях и вставляет в код вызовы `checks.CheckAt(...)`, которые проверяют контракты во время выполнения программы. Оригинальные файлы не изменяются — результат применяется через `go build --overlay`.
 
 ## Быстрый старт
 
@@ -30,7 +30,7 @@ assigns \nothing;
 func Abs(x int) int { ... }
 ```
 
-Плагин вставит `checks.Check(...)` для каждого `requires` в начало функции и `defer checks.Check(...)` для каждого `ensures`.
+Плагин вставит `checks.CheckAt(...)` для каждого `requires` в начало функции и `defer checks.CheckAt(...)` для каждого `ensures`.
 
 #### `requires` — предусловие
 
@@ -46,7 +46,9 @@ func Get(a []int, x, n int) int { ... }
 
 #### `ensures` — постусловие
 
-Условие, которое должно быть истинным при возврате из функции. Можно использовать `\result` для обращения к возвращаемому значению:
+Условие, которое должно быть истинным при возврате из функции.
+
+**Одно возвращаемое значение** — используйте `\result`:
 
 ```go
 /*@
@@ -55,7 +57,28 @@ ensures \result >= lo && \result <= hi;
 func Clamp(x, lo, hi int) int { ... }
 ```
 
-> ⚠️ `\result` работает только для функций с **одним** возвращаемым значением.
+**Несколько возвращаемых значений (неименованные)** — используйте `\result_0`, `\result_1`, ...:
+
+```go
+/*@
+requires b != 0;
+ensures \result_0 == a / b;
+ensures \result_1 == a % b;
+*/
+func DivMod(a, b int) (int, int) { ... }
+```
+
+**Несколько возвращаемых значений (именованные)** — используйте `\result_0`, `\result_1`, ... или имена переменных напрямую через `\result_N` (плагин автоматически подставит имена из сигнатуры):
+
+```go
+/*@
+requires len(a) > 0;
+ensures \result_0 <= \result_1;
+*/
+func MinMax(a []int) (min, max int) { ... }
+```
+
+> При именованных возвращаемых значениях `\result_0` → `min`, `\result_1` → `max` и т.д. — плагин использует имена из сигнатуры функции.
 
 Можно использовать `\old(expr)` для обращения к значению выражения **на момент входа** в функцию:
 
@@ -79,7 +102,7 @@ assigns x, y;       // игнорируется
 
 ### Утверждения внутри функции
 
-Пишутся в однострочном комментарии `/*@ assert ...; */` внутри тела функции. Плагин вставит `checks.Check(...)` перед следующим оператором:
+Пишутся в однострочном комментарии `/*@ assert ...; */` внутри тела функции. Плагин вставит `checks.CheckAt(...)` перед следующим оператором:
 
 ```go
 func clamp(x, min, max int) int {
@@ -132,9 +155,13 @@ for i := 0; i < n; i++ { ... }
 
 | Терм | Значение | Где работает |
 |---|---|---|
-| `\result` | возвращаемое значение функции | только в `ensures` |
+| `\result` | возвращаемое значение (для функций с одним результатом) | только в `ensures` |
+| `\result_0` | первое возвращаемое значение | только в `ensures` |
+| `\result_N` | N-е возвращаемое значение (нумерация с 0) | только в `ensures` |
 | `\old(expr)` | значение `expr` на входе в функцию | только в `ensures` |
 | `\true`, `\false` | булевы константы | везде |
+
+> При именованных возвращаемых значениях `\result_N` автоматически разрешается в имя N-го параметра из сигнатуры функции.
 
 ### Вызовы функций
 
@@ -224,12 +251,12 @@ CHECK_MODE=silent go run --overlay overlays/gpma_overlay.json samples/projects/a
 
 ## Примеры
 
-### Функция с предусловием и постусловием
+### Функция с одним возвращаемым значением
 
 ```go
 /*@
-requires x >= 0;
 ensures \result >= 0;
+ensures (\result == x) || (\result == -x);
 */
 func Abs(x int) int {
     if x < 0 {
@@ -243,15 +270,92 @@ func Abs(x int) int {
 
 ```go
 func Abs(x int) int {
-    checks.Check(x >= 0, "precondition")
-    var __result int
-    defer checks.Check(__result >= 0, "postcondition")
+    var __result_0 int
+    defer checks.CheckAt(__result_0 >= 0, "abs.go", 2, "postcondition")
+    defer checks.CheckAt(__result_0 == x || __result_0 == -x, "abs.go", 3, "postcondition")
     if x < 0 {
-        { __result = -x; return __result }
+        {
+            __result_0 = -x
+            return __result_0
+        }
     }
-    { __result = x; return __result }
+    {
+        __result_0 = x
+        return __result_0
+    }
 }
 ```
+
+> `\result` — синоним `\result_0`. Для функций с одним результатом оба варианта эквивалентны.
+
+### Функция с несколькими неименованными возвращаемыми значениями
+
+```go
+/*@
+requires b != 0;
+ensures \result_0 == a / b;
+ensures \result_1 == a % b;
+ensures \result_0 * b + \result_1 == a;
+*/
+func DivMod(a, b int) (int, int) {
+    return a / b, a % b
+}
+```
+
+После обработки:
+
+```go
+func DivMod(a, b int) (int, int) {
+    checks.CheckAt(b != 0, "divmod.go", 2, "precondition")
+    var __result_0 int
+    var __result_1 int
+    defer checks.CheckAt(__result_0 == a/b, "divmod.go", 3, "postcondition")
+    defer checks.CheckAt(__result_1 == a%b, "divmod.go", 4, "postcondition")
+    defer checks.CheckAt(__result_0*b+__result_1 == a, "divmod.go", 5, "postcondition")
+    {
+        __result_0 = a / b
+        __result_1 = a % b
+        return __result_0, __result_1
+    }
+}
+```
+
+### Функция с именованными возвращаемыми значениями
+
+```go
+/*@
+requires len(a) > 0;
+ensures \result_0 <= \result_1;
+*/
+func MinMax(a []int) (min, max int) {
+    min, max = a[0], a[0]
+    for _, v := range a[1:] {
+        if v < min { min = v }
+        if v > max { max = v }
+    }
+    return
+}
+```
+
+После обработки:
+
+```go
+func MinMax(a []int) (min, max int) {
+    checks.CheckAt(len(a) > 0, "minmax.go", 2, "precondition")
+    defer checks.CheckAt(min <= max, "minmax.go", 3, "postcondition")
+    min, max = a[0], a[0]
+    for _, v := range a[1:] {
+        if v < min { min = v }
+        if v > max { max = v }
+    }
+    return
+}
+```
+
+> При именованных возвращаемых значениях:
+> - `var` объявления не генерируются — Go уже объявил `min` и `max`
+> - `\result_0` → `min`, `\result_1` → `max`
+> - Голый `return` остаётся без изменений
 
 ### Функция с `\old`
 
@@ -272,10 +376,9 @@ func swap(p *int, q *int) {
 func swap(p *int, q *int) {
     __old_1 := *q
     __old_2 := *p
-    defer checks.Check(*p == __old_1 && *q == __old_2, "postcondition")
+    defer checks.CheckAt(*p == __old_1 && *q == __old_2, "swap.go", 2, "postcondition")
     save := *p
     *p = *q
     *q = save
 }
 ```
-

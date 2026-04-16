@@ -1,6 +1,0 @@
-method inc(x: Int) returns (res: Int)
-    ensures res == old(x) + 1
-{
-    assert x == 2;
-    res := x + 1
-}

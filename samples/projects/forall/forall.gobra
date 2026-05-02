@@ -1,0 +1,23 @@
+package notation
+
+requires forall i int :: 0 <= i && i < n ==> a[i] >= 0;
+ensures result >= 0;
+func SumPositive(a []int, n int) int {
+    s := 0
+    i := 0
+
+    for i < n
+        invariant 0 <= i && i <= n;
+        invariant s >= 0;
+    {
+        s = s + a[i]
+        i = i + 1
+    }
+
+    return s
+}
+
+ensures exists i int :: 0 <= i && i < n && result == a[i];
+func FirstElement(a []int, n int) int {
+    return a[0]
+}

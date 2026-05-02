@@ -1,0 +1,9 @@
+package notation
+
+ensures (!mode || result == -x) && (mode || result == x);
+func mayNegate(x int, mode bool) int {
+    if mode {
+        return -x
+    }
+    return x
+}

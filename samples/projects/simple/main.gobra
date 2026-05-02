@@ -1,0 +1,14 @@
+package main
+
+import (
+	"fmt"
+)
+
+requires f;
+func check(f bool) {
+	fmt.Printf("Passed\n")
+}
+
+func main() {
+    check(false)
+}

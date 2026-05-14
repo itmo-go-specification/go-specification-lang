@@ -175,8 +175,8 @@ func FindNamedPredicateByStartOffset(data *data.ASTData, offset int) *specir.Nam
 }
 
 
-func RunGobraVerifier(source string, astData *data.ASTData) ([]specir.NamedPredicate, error) {
-	generated, err := GenerateGobra(source, astData)
+func RunGobraVerifier(astData *data.ASTData) ([]specir.NamedPredicate, error) {
+	generated, err := GenerateGobra(astData)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate gobra: %v", err)
 	}
@@ -201,7 +201,7 @@ func RunGobraVerifier(source string, astData *data.ASTData) ([]specir.NamedPredi
 
 		sourceOffset, found := generated.predicateSpansMap[gobraOffset]
 		if !found {
-			line, col, err := OffsetToLineCol(source, sourceOffset.Start)
+			line, col, err := OffsetToLineCol(astData.Source, sourceOffset.Start)
 			if err != nil {
 				return nil, fmt.Errorf("failed to get error coords: %v", err)
 			}

@@ -24,7 +24,12 @@ func (p *Parser) ParseFile(filename string) (*data.ASTData, error) {
 		return nil, err
 	}
 
-	return data.NewASTData(file, p.fset), nil
+	content, err := os.ReadFile(filename)
+	if err != nil {
+		return nil, err
+	}
+
+	return data.NewASTData(file, p.fset, string(content)), nil
 }
 
 func (p *Parser) ParseSource(source []byte) (*data.ASTData, error) {
@@ -33,7 +38,7 @@ func (p *Parser) ParseSource(source []byte) (*data.ASTData, error) {
 		return nil, err
 	}
 
-	return data.NewASTData(file, p.fset), nil
+	return data.NewASTData(file, p.fset, string(source)), nil
 }
 
 func (p *Parser) ParseFileContent(filename string) (*data.ASTData, error) {
@@ -47,7 +52,7 @@ func (p *Parser) ParseFileContent(filename string) (*data.ASTData, error) {
 		return nil, err
 	}
 
-	return data.NewASTData(file, p.fset), nil
+	return data.NewASTData(file, p.fset, string(content)), nil
 }
 
 func ParseFile(filename string) (*ast.File, *token.FileSet, error) {

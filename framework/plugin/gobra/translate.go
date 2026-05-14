@@ -71,7 +71,7 @@ func (g *GobraArtifacts) GetGobraSource() string {
 	return g.gobraSource
 }
 
-func GenerateGobra(source string, astData *data.ASTData) (GobraArtifacts, error) {
+func GenerateGobra(astData *data.ASTData) (GobraArtifacts, error) {
 	type Segment struct {
 		info *data.AdditionalInfo
 		offset int
@@ -106,6 +106,8 @@ func GenerateGobra(source string, astData *data.ASTData) (GobraArtifacts, error)
 	g := &GobraGenerator{
 		map[int]specir.Span{},
 	}
+
+	source := astData.Source
 
 	shift := 0
 	for _, segment := range acsl_segments {

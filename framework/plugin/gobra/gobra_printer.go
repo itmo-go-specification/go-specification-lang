@@ -126,11 +126,7 @@ func (p *printer) printConditional(e *specir.ExprConditional) {
 }
 
 func (p *printer) printResult(e *specir.ExprResult) {
-	if e.Index == 0 {
-		p.buf.WriteString(`result`)
-	} else {
-		fmt.Fprintf(&p.buf, `result_%d`, e.Index)
-	}
+	panic("Unnamed result is not supported")
 }
 
 func (p *printer) printQuantifier(e *specir.ExprQuantifier) {

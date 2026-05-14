@@ -21,14 +21,16 @@ func NewAdditionalInfo() *AdditionalInfo {
 }
 
 type ASTData struct {
+	Source 	 string
 	File     *ast.File
 	FileSet  *token.FileSet
 	NodeInfo map[ast.Node]*AdditionalInfo // go ast -> Spec bindings
 	Spec     *specir.SpecModule           // all gosl context
 }
 
-func NewASTData(file *ast.File, fset *token.FileSet) *ASTData {
+func NewASTData(file *ast.File, fset *token.FileSet, source string) *ASTData {
 	return &ASTData{
+		Source:   source,
 		File:     file,
 		FileSet:  fset,
 		NodeInfo: make(map[ast.Node]*AdditionalInfo),

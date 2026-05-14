@@ -12,6 +12,7 @@ import (
 	"gpma/framework/plugin"
 	_ "gpma/framework/plugin/dynamic_checks"
 	_ "gpma/framework/plugin/examples"
+	_ "gpma/framework/plugin/gobra"
 
 	"github.com/urfave/cli/v2"
 

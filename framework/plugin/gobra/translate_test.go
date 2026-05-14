@@ -8,7 +8,6 @@ import (
 	"gpma/framework/gosl/front"
 	specir "gpma/framework/gosl/ir"
 	"gpma/framework/parser"
-	"os"
 	"slices"
 	"testing"
 )
@@ -86,10 +85,8 @@ func TestTranslationToGobra(t *testing.T) {
 		blocks := front.CollectRawBlocks(astData.FileSet, astData.File, astData.FileSet.File(astData.File.Pos()).Name())
 		spec, err := front.BuildSpecModule(blocks)
 		astData, err = bind.Bind(astData, spec)
-		text, err := os.ReadFile(filepath)
-		source := string(text)
 
-		failed_predicates, err := RunGobraVerifier(source, astData)
+		failed_predicates, err := RunGobraVerifier(astData)
 		if err != nil {
 			t.Fatalf("failed to run gobra: %v", err)
 		}
@@ -99,7 +96,7 @@ func TestTranslationToGobra(t *testing.T) {
 		}
 
 		for _, predicate := range failed_predicates {
-			line, col, err := OffsetToLineCol(source, predicate.Span.Start)
+			line, col, err := OffsetToLineCol(astData.Source, predicate.Span.Start)
 			if err != nil {
 				t.Fatalf("failed to get error coords: %v", err)
 			}

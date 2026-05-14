@@ -7,76 +7,77 @@ import (
 	"strings"
 )
 
-func generateGobraFuncContract(funcContract *specir.FuncContract) string {
-	clauses := []string{}
+type GobraGenerator struct {
+	PredicateSpansMap map[int]specir.Span
+}
 
-	for _, requires := range funcContract.Requires {
-		clauses = append(clauses, "requires " + PrintExpr(requires.Expr))
+func (g *GobraGenerator) GenerateGobraFuncContract(funcContract *specir.FuncContract, sourceOffset int) string {
+	var b strings.Builder
+
+	for i, requires := range funcContract.Requires {
+		if i > 0 {
+			b.WriteByte('\n')
+		}
+		start := b.Len()
+		b.WriteString("requires ")
+		b.WriteString(PrintExpr(requires.Expr))
+		g.PredicateSpansMap[start + sourceOffset] = requires.Span
 	}
-
 	for _, ensures := range funcContract.Ensures {
-		clauses = append(clauses, "ensures " + PrintExpr(ensures.Expr))
+		if b.Len() > 0 {
+			b.WriteByte('\n')
+		}
+		start := b.Len()
+		b.WriteString("ensures ")
+		b.WriteString(PrintExpr(ensures.Expr))
+		g.PredicateSpansMap[start + sourceOffset] = ensures.Span
 	}
-
-	return strings.Join(clauses, "\n")
+	return b.String()
 }
 
-func generateGobraLoopSpec(loopSpec *specir.LoopSpec) string {
-	clauses := []string{}
+func (g *GobraGenerator) GenerateGobraLoopSpec(loopSpec *specir.LoopSpec, sourceOffset int) string {
+	var b strings.Builder
 
-	for _, invariant := range loopSpec.Invariants {
-		clauses = append(clauses, "invariant " + PrintExpr(invariant.Expr))
+	for i, invariant := range loopSpec.Invariants {
+		if i > 0 {
+			b.WriteByte('\n')
+		}
+		start := b.Len()
+		b.WriteString("invariant ")
+		b.WriteString(PrintExpr(invariant.Expr))
+		g.PredicateSpansMap[start + sourceOffset] = invariant.Span
 	}
-
-	return strings.Join(clauses, "\n")
+	return b.String()
 }
 
-func generateGobraAsserts(asserts *specir.AssertSpec) string {
-	return "assert " + PrintExpr(asserts.Assertion.Expr) + ";"
-}
+func (g *GobraGenerator) GenerateGobraAsserts(asserts *specir.AssertSpec, sourceOffset int) string {
+	var b strings.Builder
 
-type gobraSection struct {
-	offset int
-	len int
+	start := b.Len()
+	b.WriteString("assert ")
+	b.WriteString(PrintExpr(asserts.Assertion.Expr))
+	b.WriteByte(';')
+	g.PredicateSpansMap[start + sourceOffset] = asserts.Assertion.Span
+
+	return b.String()
 }
 
 type GobraArtifacts struct {
 	gobraSource string
-	gobraSections []gobraSection
+	predicateSpansMap map[int]specir.Span
 }
 
 func (g *GobraArtifacts) GetGobraSource() string {
 	return g.gobraSource
 }
 
-func (g *GobraArtifacts) ToAstOffset(offset int) int {
-	for _, section := range g.gobraSections {
-		if offset > section.offset {
-			offset -= min(section.len, offset - section.offset)
-		}
-	}
-
-	return offset
-}
-
-func (g *GobraArtifacts) ToGobraOffset(offset int) int {
-	shift := 0
-	for _, section := range g.gobraSections {
-		if offset > section.offset {
-			shift += section.len
-		}
-	}
-	return offset + shift
-}
-
 func GenerateGobra(source string, astData *data.ASTData) (GobraArtifacts, error) {
-	type segment struct {
+	type Segment struct {
 		info *data.AdditionalInfo
 		offset int
 	}
 	
-	acsl_segments := []segment{}
-	gobra_sections := []gobraSection{}
+	acsl_segments := []Segment{}
 
 	ast.Inspect(astData.File, func(n ast.Node) bool {
 		if n == nil {
@@ -93,35 +94,37 @@ func GenerateGobra(source string, astData *data.ASTData) (GobraArtifacts, error)
 				} else if node_info.Asserts != nil {
 					return node_info.Asserts.Span.End
 				}
-
-				panic("")
+				panic("Empty NpdeInfo")
 			}()
 
-			acsl_segments = append(acsl_segments, segment{node_info, position})
+			acsl_segments = append(acsl_segments, Segment{node_info, position})
 		}
 
 		return true
 	})
 
-	shift := 0
-	for _, segment := range acsl_segments {
-		section_text := func() string {
-			if segment.info.FuncContract != nil {
-				return generateGobraFuncContract(segment.info.FuncContract)
-			} else if segment.info.LoopSpec != nil {
-				return generateGobraLoopSpec(segment.info.LoopSpec)
-			} else if segment.info.Asserts != nil {
-				return generateGobraAsserts(segment.info.Asserts)
-			}
-			panic("")
-		}()
-
-		offset := shift + segment.offset
-		source = source[:offset] + "\n" + section_text + source[offset:]
-		shift = shift + len(section_text) + 1
-
-		gobra_sections = append(gobra_sections, gobraSection{segment.offset, len(section_text) + 1})
+	g := &GobraGenerator{
+		map[int]specir.Span{},
 	}
 
-	return GobraArtifacts{source, gobra_sections}, nil
+	shift := 0
+	for _, segment := range acsl_segments {
+		offset := shift + segment.offset
+
+		section_text := func() string {
+			if segment.info.FuncContract != nil {
+				return g.GenerateGobraFuncContract(segment.info.FuncContract, offset + 1)
+			} else if segment.info.LoopSpec != nil {
+				return g.GenerateGobraLoopSpec(segment.info.LoopSpec, offset + 1)
+			} else if segment.info.Asserts != nil {
+				return g.GenerateGobraAsserts(segment.info.Asserts, offset + 1)
+			}
+			panic("Empty contract")
+		}()
+
+		source = source[:offset] + "\n" + section_text + source[offset:]
+		shift = shift + len(section_text) + 1
+	}
+
+	return GobraArtifacts{source, g.PredicateSpansMap}, nil
 }

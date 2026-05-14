@@ -3,65 +3,65 @@ package labeled
 // ExprTest covers all expression kinds supported by the dynamic_checks plugin:
 // arithmetic (+, -, *, /, %), comparisons (==, !=, <, <=, >, >=),
 // logical (&&, ||, !), unary (-), integer literals, \true/\false,
-// \old, \result, assert.
+// \old, res, assert.
 
 /*
 @
 requires x >= 0;
-ensures \result == x + 1;
+ensures res == x + 1;
 assigns \nothing;
 */
-func AddOne(x int) int {
+func AddOne(x int) (res int) {
 	return x + 1
 }
 
 /*
 @
 requires b > a;
-ensures \result == b - a;
+ensures res == b - a;
 assigns \nothing;
 */
-func Diff(a, b int) int {
+func Diff(a, b int) (res int) {
 	return b - a
 }
 
 /*
 @
 requires n >= 0;
-ensures \result == n * 2;
+ensures res == n * 2;
 assigns \nothing;
 */
-func Double(n int) int {
+func Double(n int) (res int) {
 	return n * 2
 }
 
 /*
 @
 requires d != 0;
-ensures \result == n / d;
+ensures res == n / d;
 assigns \nothing;
 */
-func Divide(n, d int) int {
+func Divide(n, d int) (res int) {
 	return n / d
 }
 
 /*
 @
 requires d != 0;
-ensures \result == n % d;
+ensures res == n % d;
 assigns \nothing;
 */
-func Modulo(n, d int) int {
+func Modulo(n, d int) (res int) {
 	return n % d
 }
 
 /*
 @
 requires x >= 0;
-ensures \result >= 0;
+ensures res >= 0;
 assigns \nothing;
 */
-func Abs(x int) int {
+func Abs(x int) (res int) {
 	if x < 0 {
 		return -x
 	}
@@ -71,21 +71,21 @@ func Abs(x int) int {
 /*
 @
 requires !(x == 0);
-ensures \result != 0;
+ensures res != 0;
 assigns \nothing;
 */
-func Identity(x int) int {
+func Identity(x int) (res int) {
 	return x
 }
 
 /*
 @
 requires lo <= hi;
-ensures \result >= lo;
-ensures \result <= hi;
+ensures res >= lo;
+ensures res <= hi;
 assigns \nothing;
 */
-func Clamp(x, lo, hi int) int {
+func Clamp(x, lo, hi int) (res int) {
 	if x < lo {
 		return lo
 	}
@@ -98,30 +98,30 @@ func Clamp(x, lo, hi int) int {
 /*
 @
 requires n > 0;
-ensures \result == \old(n) + 1;
+ensures res == \old(n) + 1;
 assigns \nothing;
 */
-func Increment(n int) int {
+func Increment(n int) (res int) {
 	return n + 1
 }
 
 /*
 @
 requires \true;
-ensures \result == 42;
+ensures res == 42;
 assigns \nothing;
 */
-func FortyTwo() int {
+func FortyTwo() (res int) {
 	return 42
 }
 
 /*
 @
 requires n >= 0;
-ensures \result == n * (n + 1) / 2;
+ensures res == n * (n + 1) / 2;
 assigns \nothing;
 */
-func TriangleNumber(n int) int {
+func TriangleNumber(n int) (res int) {
 	return n * (n + 1) / 2
 }
 

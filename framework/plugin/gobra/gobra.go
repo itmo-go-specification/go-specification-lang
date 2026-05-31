@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strconv"
+	"strings"
 )
 
 // ErrorLocation holds the parsed coordinates from a Gobra error message.
@@ -92,10 +93,9 @@ func LineColToOffset(text string, line, col int) (int, error) {
 	return 0, fmt.Errorf("position %d:%d not found in text", line, col)
 }
 
-// RunGobraImage runs the const docker image, mounting inputFile into the
-// container at /input/<basename> and passing that path as the sole argument.
+// RunGobra invokes the Gobra verifier for inputFile using the given config.
 // Stderr is forwarded to the current process; stdout is returned as a string.
-func RunGobraImage(inputFile string) (string, error) {
+func RunGobra(inputFile string, cfg GobraConfig) (string, error) {
 	absPath, err := filepath.Abs(inputFile)
 	if err != nil {
 		return "", fmt.Errorf("resolve input file path: %w", err)
@@ -105,21 +105,82 @@ func RunGobraImage(inputFile string) (string, error) {
 		return "", fmt.Errorf("input file not accessible: %w", err)
 	}
 
-	containerPath := "/input/" + filepath.Base(absPath)
+	switch cfg.Backend {
+	case BackendDocker:
+		return runGobraDocker(absPath, cfg)
+	default:
+		return runGobraNative(absPath, cfg)
+	}
+}
+
+func runGobraNative(inputFile string, cfg GobraConfig) (string, error) {
+	if cfg.Jar == "" {
+		return "", fmt.Errorf("gobra jar path is not configured (set GOBRA_JAR or gobra_jar)")
+	}
+	if _, err := os.Stat(cfg.Jar); err != nil {
+		return "", fmt.Errorf("gobra jar not accessible at %q: %w", cfg.Jar, err)
+	}
+
+	args := append(cfg.javaArgs(), "-jar", cfg.Jar, "-i", inputFile)
+	cmd := exec.Command(cfg.Java, args...)
+	cmd.Stderr = os.Stderr
+	cmd.Env = gobraProcessEnv(cfg)
+
+	out, err := cmd.Output()
+	if err != nil {
+		return string(out), fmt.Errorf("gobra native: %w", err)
+	}
+	return string(out), nil
+}
+
+func runGobraDocker(inputFile string, cfg GobraConfig) (string, error) {
+	containerPath := "/input/" + filepath.Base(inputFile)
 
 	cmd := exec.Command(
 		"docker", "run", "--rm",
-		"-v", absPath+":"+containerPath+":ro",
-		"ghcr.io/viperproject/gobra:sha-7fa4f86",
+		"-v", inputFile+":"+containerPath+":ro",
+		cfg.DockerImage,
 		"-i", containerPath,
 	)
 	cmd.Stderr = os.Stderr
 
 	out, err := cmd.Output()
-	//if err != nil {
-	//	return "", fmt.Errorf("docker run: %w", err)
-	//}
+	if err != nil {
+		return string(out), fmt.Errorf("gobra docker: %w", err)
+	}
 	return string(out), nil
+}
+
+func gobraProcessEnv(cfg GobraConfig) []string {
+	env := os.Environ()
+	setEnv := func(key, value string) {
+		if value == "" {
+			return
+		}
+		prefix := key + "="
+		filtered := env[:0]
+		for _, e := range env {
+			if !strings.HasPrefix(e, prefix) {
+				filtered = append(filtered, e)
+			}
+		}
+		env = append(filtered, prefix+value)
+	}
+	setEnv("Z3_EXE", cfg.Z3Exe)
+	setEnv("BOOGIE_EXE", cfg.BoogieExe)
+	setEnv("DOTNET_SYSTEM_GLOBALIZATION_INVARIANT", "true")
+	setEnv("LD_LIBRARY_PATH", prependLibPath(os.Getenv("LD_LIBRARY_PATH")))
+	return env
+}
+
+func prependLibPath(existing string) string {
+	if existing == "" {
+		return defaultLibPath
+	}
+	if strings.HasPrefix(existing, defaultLibPath) {
+		return existing
+	}
+	return defaultLibPath + ":" + existing
 }
 
 // WriteTempFile writes content to a newly created temporary file and returns
@@ -175,7 +236,7 @@ func FindNamedPredicateByStartOffset(data *data.ASTData, offset int) *specir.Nam
 }
 
 
-func RunGobraVerifier(astData *data.ASTData) ([]specir.NamedPredicate, error) {
+func RunGobraVerifier(astData *data.ASTData, cfg GobraConfig) ([]specir.NamedPredicate, error) {
 	generated, err := GenerateGobra(astData)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate gobra: %v", err)
@@ -187,7 +248,7 @@ func RunGobraVerifier(astData *data.ASTData) ([]specir.NamedPredicate, error) {
 	}
 	defer os.Remove(tmpFile)
 
-	gobraReport, err := RunGobraImage(tmpFile)
+	gobraReport, err := RunGobra(tmpFile, cfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get gobra report: %v", err)
 	}

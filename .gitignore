@@ -5,6 +5,10 @@ vendor/
 *.log
 *.out
 
+packaging/dist/
+packaging/staging/
+packaging/cache/
+
 .vscode
 *generated*
 overlays/*

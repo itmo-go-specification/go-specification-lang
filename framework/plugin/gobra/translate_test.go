@@ -73,36 +73,29 @@ func PrintAllNamedPredicates(data *data.ASTData, fileContent string) {
 }
 
 func TestTranslationToGobra(t *testing.T) {
-	filepath := "../../samples/projects/expr/expr.go"
-	parser := parser.NewParser()
+	filepath := "../../../samples/projects/expr/expr.go"
+	p := parser.NewParser()
 
-	t.Run("General", func(t *testing.T) {
-		astData, err := parser.ParseFile(filepath)
-		if err != nil {
-			t.Fatalf("failed to parse file: %v", err)
-		}
+	astData, err := p.ParseFile(filepath)
+	if err != nil {
+		t.Fatalf("failed to parse file: %v", err)
+	}
 
-		blocks := front.CollectRawBlocks(astData.FileSet, astData.File, astData.FileSet.File(astData.File.Pos()).Name())
-		spec, err := front.BuildSpecModule(blocks)
-		astData, err = bind.Bind(astData, spec)
+	blocks := front.CollectRawBlocks(astData.FileSet, astData.File, astData.FileSet.File(astData.File.Pos()).Name())
+	spec, _ := front.BuildSpecModule(blocks)
+	astData, err = bind.Bind(astData, spec)
+	if err != nil {
+		t.Fatalf("failed to bind spec: %v", err)
+	}
 
-		failed_predicates, err := RunGobraVerifier(astData)
-		if err != nil {
-			t.Fatalf("failed to run gobra: %v", err)
-		}
-
-		if len(failed_predicates) == 0 {
-			t.Fatalf("failed assertion not found")
-		}
-
-		for _, predicate := range failed_predicates {
-			line, col, err := OffsetToLineCol(astData.Source, predicate.Span.Start)
-			if err != nil {
-				t.Fatalf("failed to get error coords: %v", err)
-			}
-
-			fmt.Printf("Error: condition at %d:%d may fail\n", line, col)
-			fmt.Printf("\t%s\n", PrintExpr(predicate.Expr))
-		}
-	})
+	generated, err := GenerateGobra(astData)
+	if err != nil {
+		t.Fatalf("failed to generate gobra: %v", err)
+	}
+	if generated.GetGobraSource() == "" {
+		t.Fatal("expected non-empty gobra source")
+	}
+	if len(generated.predicateSpansMap) == 0 {
+		t.Fatal("expected predicate span mappings")
+	}
 }

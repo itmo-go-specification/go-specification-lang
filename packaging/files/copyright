@@ -1,0 +1,23 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: gpma
+Source: https://github.com/viperproject/go-specification-lang
+
+Files: *
+Copyright: GPMA contributors
+License: Apache-2.0
+ Comment: See LICENSE for the full Apache License 2.0 text.
+
+Files: usr/lib/gpma/gobra/gobra.jar
+Copyright: ETH Zurich and Gobra contributors
+License: MPL-2.0
+ Comment: Bundled from https://github.com/viperproject/gobra (image ghcr.io/viperproject/gobra)
+
+Files: usr/lib/gpma/bin/z3
+Copyright: Microsoft Corporation
+License: MIT
+ Comment: Z3 theorem prover, https://github.com/Z3Prover/z3
+
+Files: usr/lib/gpma/bin/Boogie
+Copyright: Microsoft Corporation
+License: MS-PL
+ Comment: Bundled from https://github.com/viperproject/boogie-builder

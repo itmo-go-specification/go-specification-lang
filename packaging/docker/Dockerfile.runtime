@@ -1,0 +1,24 @@
+# Install a pre-built .deb (used in CI after artifact download).
+#
+# Build:
+#   just build-deb && just docker-gpma-runtime
+
+FROM ubuntu:22.04
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    ca-certificates \
+    openjdk-21-jre-headless \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY packaging/dist/gpma_*.deb /tmp/gpma.deb
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends /tmp/gpma.deb \
+    && rm /tmp/gpma.deb \
+    && rm -rf /var/lib/apt/lists/*
+
+ENV LD_LIBRARY_PATH=/usr/lib/gpma/lib
+
+ENTRYPOINT ["gpma"]
+CMD ["--help"]

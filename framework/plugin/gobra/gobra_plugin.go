@@ -12,10 +12,14 @@ func init() {
 	})
 }
 
-type GobraPlugin struct {}
+type GobraPlugin struct {
+	config GobraConfig
+}
 
 func NewGobraPlugin() *GobraPlugin {
-	return &GobraPlugin{}
+	return &GobraPlugin{
+		config: DefaultConfig(),
+	}
 }
 
 func (p *GobraPlugin) Name() string {
@@ -23,13 +27,13 @@ func (p *GobraPlugin) Name() string {
 }
 
 func (p *GobraPlugin) Configure(params map[string]interface{}) error {
-	return nil
+	return p.config.ApplyPluginParams(params)
 }
 
 func (p *GobraPlugin) Process(astData *data.ASTData) *plugin.PluginResult {
 	result := plugin.NewPluginResult()
 
-	failed_predicates, err := RunGobraVerifier(astData)
+	failed_predicates, err := RunGobraVerifier(astData, p.config)
 	if err != nil {
 		result.WithError(err)
 	}

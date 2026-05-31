@@ -1,0 +1,20 @@
+name: gpma
+arch: amd64
+platform: linux
+version: "@VERSION@"
+section: devel
+priority: optional
+maintainer: GPMA Team
+description: |
+  Go Program Modelling Annotations (GPMA) framework.
+  Includes gpma CLI, Gobra verifier, Z3, and Boogie.
+depends:
+  - openjdk-21-jre-headless
+  - ca-certificates
+contents:
+  - src: packaging/dist/deb-root/
+    dst: /
+    type: tree
+scripts:
+  postinstall: packaging/debian/postinst
+  preremove: packaging/debian/prerm

@@ -1,5 +1,5 @@
 acsl_trees
-build*
+/build*
 bin/
 vendor/
 *.log
@@ -8,6 +8,8 @@ vendor/
 packaging/dist/
 packaging/staging/
 packaging/cache/
+!packaging/scripts/build-deb.sh
+!packaging/scripts/build-gpma.sh
 
 .vscode
 *generated*

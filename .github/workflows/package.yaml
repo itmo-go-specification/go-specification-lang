@@ -46,7 +46,14 @@ jobs:
           echo "$(go env GOPATH)/bin" >> "$GITHUB_PATH"
 
       - name: Build deb
-        run: packaging/scripts/build-deb.sh
+        shell: bash
+        run: |
+          set -euo pipefail
+          pwd
+          ls -la
+          test -f ./packaging/scripts/build-deb.sh
+          chmod +x ./packaging/scripts/build-deb.sh
+          ./packaging/scripts/build-deb.sh
 
       - name: Upload deb artifact
         uses: actions/upload-artifact@v4

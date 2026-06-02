@@ -12,7 +12,7 @@ FROM --platform=linux/amd64 golang:1.25-trixie AS deb-builder
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     unzip \
-    openjdk-21-jre-headless \
+    openjdk-17-jre-headless \
     ca-certificates \
     dpkg \
     && rm -rf /var/lib/apt/lists/*

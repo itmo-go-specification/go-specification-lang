@@ -1,19 +1,22 @@
 package acsl
 
-/*@
+/*
+@
 axiomatic Equal
-{
-	predicate
-	Equal{K,L}(value_type* a, integer n, value_type* b) =
-		\forall integer i; 0 <= i < n ==> \at(a[i],K) == \at(b[i],L);
-}
+
+	{
+		predicate
+		Equal{K,L}(value_type* a, integer n, value_type* b) =
+			\forall integer i; 0 <= i < n ==> \at(a[i],K) == \at(b[i],L);
+	}
 
 axiomatic Unchanged
-{
-	predicate
-	Unchanged{K,L}(value_type* a, integer m, integer n) =
-		\forall integer i; m <= i < n ==> \at(a[i],K) == \at(a[i],L);
-}
+
+	{
+		predicate
+		Unchanged{K,L}(value_type* a, integer m, integer n) =
+			\forall integer i; m <= i < n ==> \at(a[i],K) == \at(a[i],L);
+	}
 
 requires valid: \valid_read(a + (0..n-1));
 requires valid: \valid(b + (0..n-1));
@@ -30,6 +33,6 @@ func copy(a []int, b []int, n int) {
 	loop variant n-i;
 	*/
 	for i := 0; i < n; i++ {
-		b[i] = a[i];
+		b[i] = a[i]
 	}
 }

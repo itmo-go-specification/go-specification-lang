@@ -333,6 +333,7 @@ func (d LogicDecl) MarshalJSON() ([]byte, error) {
 		Params     []LogicParam  `json:"params,omitempty"`
 		ResultType TypeExpr      `json:"resultType"`
 		Body       *exprJSON     `json:"body,omitempty"`
+		ClauseKind ClauseKind    `json:"clauseKind,omitempty`
 		Span       Span          `json:"span,omitempty"`
 	}
 	return json.Marshal(alias{
@@ -341,6 +342,7 @@ func (d LogicDecl) MarshalJSON() ([]byte, error) {
 		Params:     d.Params,
 		ResultType: d.ResultType,
 		Body:       body,
+		ClauseKind: d.ClauseKind,
 		Span:       d.Span,
 	})
 }
@@ -352,6 +354,7 @@ func (d *LogicDecl) UnmarshalJSON(data []byte) error {
 		Params     []LogicParam  `json:"params,omitempty"`
 		ResultType TypeExpr      `json:"resultType"`
 		Body       *exprJSON     `json:"body,omitempty"`
+		ClauseKind ClauseKind    `json:"clauseKind,omitempty"`
 		Span       Span          `json:"span,omitempty"`
 	}
 	var a alias
@@ -367,6 +370,7 @@ func (d *LogicDecl) UnmarshalJSON(data []byte) error {
 	d.Params = a.Params
 	d.ResultType = a.ResultType
 	d.Body = body
+	d.ClauseKind = a.ClauseKind
 	d.Span = a.Span
 	return nil
 }

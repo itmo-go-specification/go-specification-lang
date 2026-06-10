@@ -1,6 +1,7 @@
 package acsl
 
-/*@
+/*
+@
 requires 0 < n;
 requires \valid_read(a + (0..n-1));
 assigns \nothing;

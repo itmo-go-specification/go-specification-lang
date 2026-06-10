@@ -8,6 +8,16 @@ const (
 	LogicFunction LogicDeclKind = iota
 	LogicPredicate
 	LogicAxiom
+	LogicLemma
+)
+
+// Clause kind for describing lemmas annotation
+type ClauseKind int
+
+const (
+	ClauseDefault ClauseKind = iota
+	ClauseCheck
+	ClauseAdmit
 )
 
 // LogicDecl - describe logic function, predicate, axiom
@@ -15,12 +25,17 @@ type LogicDecl struct {
 	Name   string
 	Kind   LogicDeclKind
 	Params []LogicParam
+
 	// Result type for functions: return type: TypeExprInteger, TypeExprBoolean, ...
 	// Resulr for pred: can be Boolean/Prop
 	ResultType TypeExpr
 
 	// Body. Can be nil
 	Body Expr
+
+	// ClauseKind is meaningful for lemmas: default/check/admit.
+	// for olf logic declarations it ramains ClauseDefault.
+	ClauseKind ClauseKind
 
 	Span Span
 }

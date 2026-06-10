@@ -21,7 +21,7 @@ func (g *GobraGenerator) GenerateGobraFuncContract(funcContract *specir.FuncCont
 		start := b.Len()
 		b.WriteString("requires ")
 		b.WriteString(PrintExpr(requires.Expr))
-		g.PredicateSpansMap[start + sourceOffset] = requires.Span
+		g.PredicateSpansMap[start+sourceOffset] = requires.Span
 	}
 	for _, ensures := range funcContract.Ensures {
 		if b.Len() > 0 {
@@ -30,7 +30,7 @@ func (g *GobraGenerator) GenerateGobraFuncContract(funcContract *specir.FuncCont
 		start := b.Len()
 		b.WriteString("ensures ")
 		b.WriteString(PrintExpr(ensures.Expr))
-		g.PredicateSpansMap[start + sourceOffset] = ensures.Span
+		g.PredicateSpansMap[start+sourceOffset] = ensures.Span
 	}
 	return b.String()
 }
@@ -45,7 +45,7 @@ func (g *GobraGenerator) GenerateGobraLoopSpec(loopSpec *specir.LoopSpec, source
 		start := b.Len()
 		b.WriteString("invariant ")
 		b.WriteString(PrintExpr(invariant.Expr))
-		g.PredicateSpansMap[start + sourceOffset] = invariant.Span
+		g.PredicateSpansMap[start+sourceOffset] = invariant.Span
 	}
 	return b.String()
 }
@@ -57,13 +57,13 @@ func (g *GobraGenerator) GenerateGobraAsserts(asserts *specir.AssertSpec, source
 	b.WriteString("assert ")
 	b.WriteString(PrintExpr(asserts.Assertion.Expr))
 	b.WriteByte(';')
-	g.PredicateSpansMap[start + sourceOffset] = asserts.Assertion.Span
+	g.PredicateSpansMap[start+sourceOffset] = asserts.Assertion.Span
 
 	return b.String()
 }
 
 type GobraArtifacts struct {
-	gobraSource string
+	gobraSource       string
 	predicateSpansMap map[int]specir.Span
 }
 
@@ -73,10 +73,10 @@ func (g *GobraArtifacts) GetGobraSource() string {
 
 func GenerateGobra(astData *data.ASTData) (GobraArtifacts, error) {
 	type Segment struct {
-		info *data.AdditionalInfo
+		info   *data.AdditionalInfo
 		offset int
 	}
-	
+
 	acsl_segments := []Segment{}
 
 	ast.Inspect(astData.File, func(n ast.Node) bool {
@@ -115,11 +115,11 @@ func GenerateGobra(astData *data.ASTData) (GobraArtifacts, error) {
 
 		section_text := func() string {
 			if segment.info.FuncContract != nil {
-				return g.GenerateGobraFuncContract(segment.info.FuncContract, offset + 1)
+				return g.GenerateGobraFuncContract(segment.info.FuncContract, offset+1)
 			} else if segment.info.LoopSpec != nil {
-				return g.GenerateGobraLoopSpec(segment.info.LoopSpec, offset + 1)
+				return g.GenerateGobraLoopSpec(segment.info.LoopSpec, offset+1)
 			} else if segment.info.Asserts != nil {
-				return g.GenerateGobraAsserts(segment.info.Asserts, offset + 1)
+				return g.GenerateGobraAsserts(segment.info.Asserts, offset+1)
 			}
 			panic("Empty contract")
 		}()

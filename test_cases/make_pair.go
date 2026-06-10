@@ -1,11 +1,12 @@
 package acsl
 
 type pair struct {
-	first int
+	first  int
 	second int
 }
 
-/*@
+/*
+@
 assigns \nothing;
 ensures result: \result.first == first;
 ensures result: \result.second == second;

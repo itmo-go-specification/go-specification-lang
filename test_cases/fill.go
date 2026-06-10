@@ -1,12 +1,14 @@
 package acsl
 
-/*@
+/*
+@
 axiomatic AllSomeNot
-{
-	predicate
-	AllEqual(value_type* a, integer m, integer n, value_type v) =
-		\forall integer i; m <= i < n ==> a[i] == v;
-}
+
+	{
+		predicate
+		AllEqual(value_type* a, integer m, integer n, value_type v) =
+			\forall integer i; m <= i < n ==> a[i] == v;
+	}
 
 requires valid: \valid(a + (0..n-1));
 assigns a[0..n-1];
@@ -20,6 +22,6 @@ func fill(a []int, n int, v int) {
 	loop variant n-i;
 	*/
 	for i := 0; i < n; i++ {
-		a[i] = v;
+		a[i] = v
 	}
 }

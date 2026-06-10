@@ -178,6 +178,38 @@ variable_ident
     | '(' variable_ident ')'
     ;
 
+// logic specifications
+clause_kind
+    : 'check'
+    | 'admit'
+    ;
+
+logic_def 
+    : logic_predicate_def
+    | logic_function_def
+    | lemma_def
+    ;
+
+logic_predicate_def
+    : 'predicate' poly_id parameters? '=' pred ';'
+    ;
+
+logic_function_def
+    : 'logic' poly_id parameters type_expr '=' term ';'
+    ;
+
+lemma_def
+    : clause_kind? 'lemma' poly_id ':' pred ';'
+    ;
+
+parameters
+    : '(' parameter (',' parameter)* ')'
+    ;
+
+parameter
+    : variable_ident (',' variable_ident)* type_expr
+    ;
+
 // fn_behavior.tex
 function_contract
     : requires_clause* terminates_clause? decreases_clause? simple_clause* named_behavior* completeness_clause*
@@ -492,6 +524,10 @@ AcslCommentIntermediate
 			 }  }
     ;
 
+acsl_comment_logic_defs
+    : AcslCommentStart Newline* logic_def+ AcslCommentEnd Newline*
+    ;
+
 acsl_comment_contract
     : AcslCommentStart Newline* function_contract AcslCommentEnd Newline*
     ;
@@ -509,7 +545,8 @@ acsl_comment_statement_contract
     ;
 
 acsl_comment
-    : acsl_comment_contract
+    : acsl_comment_logic_defs
+    | acsl_comment_contract
     | acsl_comment_assertion
     | acsl_comment_loop_annot
     | acsl_comment_statement_contract

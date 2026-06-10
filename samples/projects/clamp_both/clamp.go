@@ -1,6 +1,7 @@
 package clamp
 
-/*@
+/*
+@
 requires min <= max;
 ensures \result >= min;
 ensures \result <= max;

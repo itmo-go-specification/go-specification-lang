@@ -13,6 +13,10 @@ import (
 
 func (b *ACSLBuilder) VisitAcsl_comment(ctx *acsl.Acsl_commentContext) interface{} {
 	switch {
+	case ctx.Acsl_comment_logic_defs() != nil:
+		log.Debug("logic defs\n")
+		return b.Visit(ctx.Acsl_comment_logic_defs())
+
 	case ctx.Acsl_comment_contract() != nil:
 		return b.Visit(ctx.Acsl_comment_contract())
 
@@ -384,13 +388,29 @@ func (b *ACSLBuilder) VisitFunc_application_term(ctx *acsl.Func_application_term
 		name = n
 	}
 
-	argsCtx := ctx.AllTerm()
-	args := make([]specir.Expr, 0, len(argsCtx))
-	for _, a := range argsCtx {
-		args = append(args, b.termToExpr(a))
+	return b.buildCallExpr(ctx, name, ctx.AllTerm())
+}
+
+func (b *ACSLBuilder) VisitPredicate_application_pred(ctx *acsl.Predicate_application_predContext) interface{} {
+	log.Debugln("VisitPredicate_application_pred text:", ctx.GetText())
+
+	name := ""
+	if ctx.Ident() != nil {
+		name = ctx.Ident().GetText()
 	}
+
+	return b.buildCallExpr(ctx, name, ctx.AllTerm())
+}
+
+func (b *ACSLBuilder) buildCallExpr(spanCtx antlr.ParserRuleContext, name string, terms []acsl.ITermContext) specir.Expr {
+	args := make([]specir.Expr, 0, len(terms))
+
+	for _, t := range terms {
+		args = append(args, b.termToExpr(t))
+	}
+
 	return &specir.ExprCall{
-		BaseExpr: specir.BaseExpr{Span: b.blockSpan(ctx)},
+		BaseExpr: specir.BaseExpr{Span: b.blockSpan(spanCtx)},
 		Name:     name,
 		Args:     args,
 	}

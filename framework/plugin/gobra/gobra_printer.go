@@ -252,16 +252,16 @@ func needsRightParen(op specir.BinaryOp, right specir.Expr) bool {
 // typeExprStr renders a specir.TypeExpr as a string.
 // If TypeExpr implements fmt.Stringer that is used; otherwise %v is the fallback.
 func typeExprStr(t specir.TypeExpr) string {
-    switch t.Kind {
-    case specir.TypeBoolean:
-        return "boolean"
-    case specir.TypeInteger:
-        return "integer"
-    case specir.TypeReal:
-        return "real"
-    case specir.TypeCustom:
-        return t.Name
-    default:
-        return fmt.Sprintf("<type:%d>", t.Kind)
-    }
+	switch t.Kind {
+	case specir.TypeBoolean:
+		return "boolean"
+	case specir.TypeInteger:
+		return "integer"
+	case specir.TypeReal:
+		return "real"
+	case specir.TypeCustom:
+		return t.Name
+	default:
+		return fmt.Sprintf("<type:%d>", t.Kind)
+	}
 }

@@ -1,6 +1,7 @@
 package absdiff
 
-/*@
+/*
+@
 ensures \result >= 0;
 */
 func absDiff(a, b int) int {

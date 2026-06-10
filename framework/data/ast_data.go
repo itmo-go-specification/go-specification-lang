@@ -21,7 +21,7 @@ func NewAdditionalInfo() *AdditionalInfo {
 }
 
 type ASTData struct {
-	Source 	 string
+	Source   string
 	File     *ast.File
 	FileSet  *token.FileSet
 	NodeInfo map[ast.Node]*AdditionalInfo // go ast -> Spec bindings

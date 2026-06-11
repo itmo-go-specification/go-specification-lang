@@ -7,8 +7,14 @@ import (
 	"strings"
 )
 
+type PredicateSpan struct {
+	Start      int
+	End        int
+	SourceSpan specir.Span
+}
+
 type GobraGenerator struct {
-	PredicateSpansMap map[int]specir.Span
+	PredicateSpans []PredicateSpan
 }
 
 func (g *GobraGenerator) GenerateGobraFuncContract(funcContract *specir.FuncContract, sourceOffset int) string {
@@ -21,7 +27,12 @@ func (g *GobraGenerator) GenerateGobraFuncContract(funcContract *specir.FuncCont
 		start := b.Len()
 		b.WriteString("requires ")
 		b.WriteString(PrintExpr(requires.Expr))
-		g.PredicateSpansMap[start+sourceOffset] = requires.Span
+		end := b.Len()
+		g.PredicateSpans = append(g.PredicateSpans, PredicateSpan{
+			Start:      start + sourceOffset,
+			End:        end + sourceOffset,
+			SourceSpan: requires.Span,
+		})
 	}
 	for _, ensures := range funcContract.Ensures {
 		if b.Len() > 0 {
@@ -30,7 +41,12 @@ func (g *GobraGenerator) GenerateGobraFuncContract(funcContract *specir.FuncCont
 		start := b.Len()
 		b.WriteString("ensures ")
 		b.WriteString(PrintExpr(ensures.Expr))
-		g.PredicateSpansMap[start+sourceOffset] = ensures.Span
+		end := b.Len()
+		g.PredicateSpans = append(g.PredicateSpans, PredicateSpan{
+			Start:      start + sourceOffset,
+			End:        end + sourceOffset,
+			SourceSpan: ensures.Span,
+		})
 	}
 	return b.String()
 }
@@ -45,7 +61,12 @@ func (g *GobraGenerator) GenerateGobraLoopSpec(loopSpec *specir.LoopSpec, source
 		start := b.Len()
 		b.WriteString("invariant ")
 		b.WriteString(PrintExpr(invariant.Expr))
-		g.PredicateSpansMap[start+sourceOffset] = invariant.Span
+		end := b.Len()
+		g.PredicateSpans = append(g.PredicateSpans, PredicateSpan{
+			Start:      start + sourceOffset,
+			End:        end + sourceOffset,
+			SourceSpan: invariant.Span,
+		})
 	}
 	return b.String()
 }
@@ -57,14 +78,19 @@ func (g *GobraGenerator) GenerateGobraAsserts(asserts *specir.AssertSpec, source
 	b.WriteString("assert ")
 	b.WriteString(PrintExpr(asserts.Assertion.Expr))
 	b.WriteByte(';')
-	g.PredicateSpansMap[start+sourceOffset] = asserts.Assertion.Span
+	end := b.Len()
+	g.PredicateSpans = append(g.PredicateSpans, PredicateSpan{
+		Start:      start + sourceOffset,
+		End:        end + sourceOffset,
+		SourceSpan: asserts.Assertion.Span,
+	})
 
 	return b.String()
 }
 
 type GobraArtifacts struct {
-	gobraSource       string
-	predicateSpansMap map[int]specir.Span
+	gobraSource    string
+	predicateSpans []PredicateSpan
 }
 
 func (g *GobraArtifacts) GetGobraSource() string {
@@ -104,7 +130,7 @@ func GenerateGobra(astData *data.ASTData) (GobraArtifacts, error) {
 	})
 
 	g := &GobraGenerator{
-		map[int]specir.Span{},
+		PredicateSpans: []PredicateSpan{},
 	}
 
 	source := astData.Source
@@ -128,5 +154,5 @@ func GenerateGobra(astData *data.ASTData) (GobraArtifacts, error) {
 		shift = shift + len(section_text) + 1
 	}
 
-	return GobraArtifacts{source, g.PredicateSpansMap}, nil
+	return GobraArtifacts{source, g.PredicateSpans}, nil
 }

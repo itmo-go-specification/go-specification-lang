@@ -95,7 +95,7 @@ func TestTranslationToGobra(t *testing.T) {
 	if generated.GetGobraSource() == "" {
 		t.Fatal("expected non-empty gobra source")
 	}
-	if len(generated.predicateSpansMap) == 0 {
+	if len(generated.predicateSpans) == 0 {
 		t.Fatal("expected predicate span mappings")
 	}
 }

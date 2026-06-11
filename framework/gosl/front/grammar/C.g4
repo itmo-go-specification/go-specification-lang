@@ -945,7 +945,12 @@ BlockComment
         -> skip
     ;
     
+//LineComment
+//    :   '//' ~[\r\n]*
+//        -> skip
+//    ;
+
 LineComment
-    :   '//' ~[\r\n]*
+    :   '//' ( ~[@\r\n] ~[\r\n]* )?
         -> skip
     ;

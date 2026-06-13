@@ -121,17 +121,18 @@ func TestCoordMappingLookup(t *testing.T) {
 }
 
 func TestMapErrors_withMapping(t *testing.T) {
-	mapping := &CoordMapping{
-		Entries: []MappingEntry{
-			{GenLine: 5, GenColumn: 1, Orig: SourcePos{File: "abs.go", Line: 3, Column: 1}, Kind: "precondition"},
-		},
-	}
+	mapping := NewHybridMapping("abs.go")
+	mapping.AddInterval(Interval{
+		GenStart:  5,
+		GenEnd:    10,
+		SourcePos: Position{File: "abs.go", Line: 3, Column: 1},
+	})
 
 	raw := []rawError{
 		{genLine: 5, genColumn: 16, message: "Precondition might not hold"},
 	}
 
-	result := mapErrors(raw, mapping)
+	result := mapErrorsWithHybrid(raw, mapping)
 	if len(result) != 1 {
 		t.Fatalf("expected 1 mapped error, got %d", len(result))
 	}
@@ -156,7 +157,7 @@ func TestMapErrors_nilMapping(t *testing.T) {
 		{genLine: 10, genColumn: 1, message: "Postcondition might not hold"},
 	}
 
-	result := mapErrors(raw, nil)
+	result := mapErrorsWithHybrid(raw, nil)
 	if len(result) != 1 {
 		t.Fatalf("expected 1 error, got %d", len(result))
 	}

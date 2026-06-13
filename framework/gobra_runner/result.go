@@ -96,6 +96,12 @@ func (e VerificationError) IsInAddedCode() bool {
 			e.MappingInfo.MappingType == MappingTypePoint)
 }
 
+// IsUnmapped returns true if the error could not be mapped to source code
+// This typically indicates a problem with the mapping system or generated code
+func (e VerificationError) IsUnmapped() bool {
+	return e.MappingInfo != nil && e.MappingInfo.MappingType == MappingTypeUnmapped
+}
+
 // String returns a human-readable representation of the error
 func (e VerificationError) String() string {
 	loc := fmt.Sprintf("%s:%d:%d", e.File, e.Line, e.Column)

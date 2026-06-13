@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 )
 
 type Runner struct {
@@ -15,7 +16,8 @@ func New(settings Settings) *Runner {
 	return &Runner{settings: settings}
 }
 
-func (r *Runner) Run(gobraCode string, mapping *CoordMapping) (*VerificationResult, error) {
+// RunWithMapping runs Gobra verification with hybrid mapping support
+func (r *Runner) RunWithMapping(gobraCode string, mapping *HybridMapping) (*VerificationResult, error) {
 	tmpFile, err := writeTempFile(gobraCode)
 	if err != nil {
 		return nil, fmt.Errorf("gobra_runner: write temp file: %w", err)
@@ -41,7 +43,7 @@ func (r *Runner) Run(gobraCode string, mapping *CoordMapping) (*VerificationResu
 
 	output := string(rawOut)
 	rawErrors := parseGobraOutput(output, tmpFile)
-	mappedErrors := mapErrors(rawErrors, mapping)
+	mappedErrors := mapErrorsWithHybrid(rawErrors, mapping)
 
 	exitOK := runErr == nil
 	hasVerifErrors := len(mappedErrors) > 0
@@ -60,26 +62,25 @@ func (r *Runner) Run(gobraCode string, mapping *CoordMapping) (*VerificationResu
 	}, nil
 }
 
+// Run runs Gobra verification without mapping (legacy method for backward compatibility)
+func (r *Runner) Run(gobraCode string) (*VerificationResult, error) {
+	return r.RunWithMapping(gobraCode, nil)
+}
+
 func (r *Runner) buildCommand(ctx context.Context, inputFile string) (*exec.Cmd, error) {
 	s := r.settings
 
-	if s.GobraBin != "" {
-		args := r.buildArgs(inputFile)
-		cmd := exec.CommandContext(ctx, s.GobraBin, args...)
-		return cmd, nil
+	// Handle Docker backend
+	if s.ExecutionBackend == BackendDocker {
+		return r.buildDockerCommand(ctx, inputFile)
 	}
 
-	if s.GobraJAR == "" {
-		return nil, fmt.Errorf("neither GobraBin nor GobraJAR is set in Settings")
-	}
-
-	javaArgs := []string{"-jar", s.GobraJAR}
-	javaArgs = append(javaArgs, r.buildArgs(inputFile)...)
-	cmd := exec.CommandContext(ctx, s.JavaPath, javaArgs...)
-	return cmd, nil
+	// Handle native backend
+	return r.buildNativeCommand(ctx, inputFile)
 }
 
-func (r *Runner) buildArgs(inputFile string) []string {
+// buildGobraArgs builds Gobra command line arguments
+func (r *Runner) buildGobraArgs(inputFile string) []string {
 	s := r.settings
 	var args []string
 
@@ -111,6 +112,60 @@ func (r *Runner) buildArgs(inputFile string) []string {
 	return args
 }
 
+// buildDockerCommand builds a Docker command for running Gobra
+func (r *Runner) buildDockerCommand(ctx context.Context, inputFile string) (*exec.Cmd, error) {
+	s := r.settings
+
+	if s.DockerImage == "" {
+		return nil, fmt.Errorf("DockerImage is not set in Settings")
+	}
+
+	// Get absolute path of input file
+	absInputFile, err := filepath.Abs(inputFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get absolute path for input file: %w", err)
+	}
+
+	// Get directory of input file for volume mounting
+	inputDir := filepath.Dir(absInputFile)
+	inputFileName := filepath.Base(absInputFile)
+
+	// Build Docker command
+	args := []string{
+		"run", "--rm",
+		"-v", fmt.Sprintf("%s:/workspace", inputDir),
+		"-w", "/workspace",
+		s.DockerImage,
+	}
+
+	// Add Gobra arguments (reuse the same logic)
+	gobraArgs := r.buildGobraArgs(inputFileName)
+	args = append(args, gobraArgs...)
+
+	cmd := exec.CommandContext(ctx, "docker", args...)
+	return cmd, nil
+}
+
+// buildNativeCommand builds a native command for running Gobra
+func (r *Runner) buildNativeCommand(ctx context.Context, inputFile string) (*exec.Cmd, error) {
+	s := r.settings
+
+	if s.GobraBin != "" {
+		args := r.buildGobraArgs(inputFile)
+		cmd := exec.CommandContext(ctx, s.GobraBin, args...)
+		return cmd, nil
+	}
+
+	if s.GobraJAR == "" {
+		return nil, fmt.Errorf("neither GobraBin nor GobraJAR is set in Settings")
+	}
+
+	javaArgs := []string{"-jar", s.GobraJAR}
+	javaArgs = append(javaArgs, r.buildGobraArgs(inputFile)...)
+	cmd := exec.CommandContext(ctx, s.JavaPath, javaArgs...)
+	return cmd, nil
+}
+
 func writeTempFile(content string) (string, error) {
 	f, err := os.CreateTemp("", "gobra_input_*.go")
 	if err != nil {
@@ -125,25 +180,35 @@ func writeTempFile(content string) (string, error) {
 	return f.Name(), nil
 }
 
-func mapErrors(raw []rawError, mapping *CoordMapping) []VerificationError {
+// mapErrorsWithHybrid maps errors using the hybrid mapping system
+func mapErrorsWithHybrid(raw []rawError, mapping *HybridMapping) []VerificationError {
 	result := make([]VerificationError, 0, len(raw))
 
 	for _, re := range raw {
 		ve := VerificationError{
 			GenLine:   re.genLine,
 			GenColumn: re.genColumn,
+			GenFile:   re.genFile,
 			Message:   re.message,
 		}
 
+		// Try to map using hybrid mapping
 		if mapping != nil {
-			if entry, ok := mapping.Lookup(re.genLine, re.genColumn); ok {
-				ve.File = entry.Orig.File
-				ve.Line = entry.Orig.Line
-				ve.Column = entry.Orig.Column
-				ve.Kind = entry.Kind
+			pos, err := mapping.MapError(re.genLine, re.genColumn)
+			if err == nil {
+				ve.File = pos.File
+				ve.Line = pos.Line
+				ve.Column = pos.Column
+			} else {
+				// Mapping failed - add metadata to help with debugging
+				ve.MappingInfo = &ErrorMappingInfo{
+					MappingType: MappingTypeUnmapped,
+					Confidence:  0.0,
+				}
 			}
 		}
 
+		// Infer error kind from message
 		if ve.Kind == "" {
 			ve.Kind = inferKind(re.message)
 		}

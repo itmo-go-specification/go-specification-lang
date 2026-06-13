@@ -1,68 +1,61 @@
 package gobra_runner
 
 import (
-	"os"
-	"path/filepath"
 	"testing"
 )
 
-func TestAdditionInterval_IsValid(t *testing.T) {
+func TestInterval_IsValid(t *testing.T) {
 	tests := []struct {
 		name     string
-		interval AdditionInterval
+		interval Interval
 		want     bool
 	}{
 		{
 			name: "valid interval",
-			interval: AdditionInterval{
+			interval: Interval{
 				GenStart:  10,
 				GenEnd:    20,
-				SourcePos: SourcePos{File: "test.go", Line: 5},
-				Kind:      AdditionRequires,
+				SourcePos: Position{File: "test.go", Line: 5},
 			},
 			want: true,
 		},
 		{
 			name: "valid interval with columns",
-			interval: AdditionInterval{
+			interval: Interval{
 				GenStart:    10,
 				GenEnd:      10,
 				GenStartCol: 5,
 				GenEndCol:   15,
-				SourcePos:   SourcePos{File: "test.go", Line: 5},
-				Kind:        AdditionRequires,
+				SourcePos:   Position{File: "test.go", Line: 5},
 			},
 			want: true,
 		},
 		{
 			name: "invalid - start > end",
-			interval: AdditionInterval{
+			interval: Interval{
 				GenStart:  20,
 				GenEnd:    10,
-				SourcePos: SourcePos{File: "test.go", Line: 5},
-				Kind:      AdditionRequires,
+				SourcePos: Position{File: "test.go", Line: 5},
 			},
 			want: false,
 		},
 		{
 			name: "invalid - negative start",
-			interval: AdditionInterval{
+			interval: Interval{
 				GenStart:  -1,
 				GenEnd:    10,
-				SourcePos: SourcePos{File: "test.go", Line: 5},
-				Kind:      AdditionRequires,
+				SourcePos: Position{File: "test.go", Line: 5},
 			},
 			want: false,
 		},
 		{
 			name: "invalid - column start > column end",
-			interval: AdditionInterval{
+			interval: Interval{
 				GenStart:    10,
 				GenEnd:      10,
 				GenStartCol: 15,
 				GenEndCol:   5,
-				SourcePos:   SourcePos{File: "test.go", Line: 5},
-				Kind:        AdditionRequires,
+				SourcePos:   Position{File: "test.go", Line: 5},
 			},
 			want: false,
 		},
@@ -71,23 +64,23 @@ func TestAdditionInterval_IsValid(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := tt.interval.IsValid(); got != tt.want {
-				t.Errorf("AdditionInterval.IsValid() = %v, want %v", got, tt.want)
+				t.Errorf("Interval.IsValid() = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func TestAdditionInterval_Contains(t *testing.T) {
+func TestInterval_Contains(t *testing.T) {
 	tests := []struct {
 		name     string
-		interval AdditionInterval
+		interval Interval
 		line     int
 		col      int
 		want     bool
 	}{
 		{
 			name: "position inside interval",
-			interval: AdditionInterval{
+			interval: Interval{
 				GenStart: 10,
 				GenEnd:   20,
 			},
@@ -97,7 +90,7 @@ func TestAdditionInterval_Contains(t *testing.T) {
 		},
 		{
 			name: "position before interval",
-			interval: AdditionInterval{
+			interval: Interval{
 				GenStart: 10,
 				GenEnd:   20,
 			},
@@ -107,7 +100,7 @@ func TestAdditionInterval_Contains(t *testing.T) {
 		},
 		{
 			name: "position after interval",
-			interval: AdditionInterval{
+			interval: Interval{
 				GenStart: 10,
 				GenEnd:   20,
 			},
@@ -117,7 +110,7 @@ func TestAdditionInterval_Contains(t *testing.T) {
 		},
 		{
 			name: "position on start line before column",
-			interval: AdditionInterval{
+			interval: Interval{
 				GenStart:    10,
 				GenEnd:      20,
 				GenStartCol: 5,
@@ -128,7 +121,7 @@ func TestAdditionInterval_Contains(t *testing.T) {
 		},
 		{
 			name: "position on start line after column",
-			interval: AdditionInterval{
+			interval: Interval{
 				GenStart:    10,
 				GenEnd:      20,
 				GenStartCol: 5,
@@ -139,7 +132,7 @@ func TestAdditionInterval_Contains(t *testing.T) {
 		},
 		{
 			name: "position on end line after column",
-			interval: AdditionInterval{
+			interval: Interval{
 				GenStart:  10,
 				GenEnd:    20,
 				GenEndCol: 15,
@@ -148,34 +141,45 @@ func TestAdditionInterval_Contains(t *testing.T) {
 			col:  20,
 			want: false,
 		},
+		{
+			name: "position on end line before column",
+			interval: Interval{
+				GenStart:  10,
+				GenEnd:    20,
+				GenEndCol: 15,
+			},
+			line: 20,
+			col:  10,
+			want: true,
+		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := tt.interval.Contains(tt.line, tt.col); got != tt.want {
-				t.Errorf("AdditionInterval.Contains() = %v, want %v", got, tt.want)
+				t.Errorf("Interval.Contains() = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func TestAdditionInterval_Length(t *testing.T) {
+func TestInterval_Length(t *testing.T) {
 	tests := []struct {
 		name     string
-		interval AdditionInterval
+		interval Interval
 		want     int
 	}{
 		{
-			name: "single line",
-			interval: AdditionInterval{
+			name: "single line interval",
+			interval: Interval{
 				GenStart: 10,
 				GenEnd:   10,
 			},
 			want: 1,
 		},
 		{
-			name: "multiple lines",
-			interval: AdditionInterval{
+			name: "multi line interval",
+			interval: Interval{
 				GenStart: 10,
 				GenEnd:   20,
 			},
@@ -186,568 +190,668 @@ func TestAdditionInterval_Length(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := tt.interval.Length(); got != tt.want {
-				t.Errorf("AdditionInterval.Length() = %v, want %v", got, tt.want)
+				t.Errorf("Interval.Length() = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
 func TestHybridMapping_NewHybridMapping(t *testing.T) {
-	mapping := NewHybridMapping("gen.gobra", "source.go")
+	mapping := NewHybridMapping("source.go")
 
-	if mapping.GenFile != "gen.gobra" {
-		t.Errorf("Expected GenFile to be 'gen.gobra', got '%s'", mapping.GenFile)
-	}
 	if mapping.SourceFile != "source.go" {
-		t.Errorf("Expected SourceFile to be 'source.go', got '%s'", mapping.SourceFile)
+		t.Errorf("NewHybridMapping() SourceFile = %v, want %v", mapping.SourceFile, "source.go")
 	}
 	if len(mapping.Additions) != 0 {
-		t.Errorf("Expected empty Additions, got %d items", len(mapping.Additions))
+		t.Errorf("NewHybridMapping() Additions length = %v, want 0", len(mapping.Additions))
 	}
 	if len(mapping.PointMappings) != 0 {
-		t.Errorf("Expected empty PointMappings, got %d items", len(mapping.PointMappings))
+		t.Errorf("NewHybridMapping() PointMappings length = %v, want 0", len(mapping.PointMappings))
 	}
 }
 
 func TestHybridMapping_AddInterval(t *testing.T) {
-	mapping := NewHybridMapping("gen.gobra", "source.go")
+	mapping := NewHybridMapping("source.go")
 
-	interval := AdditionInterval{
+	interval := Interval{
 		GenStart:  10,
 		GenEnd:    20,
-		SourcePos: SourcePos{File: "source.go", Line: 5},
-		Kind:      AdditionRequires,
+		SourcePos: Position{File: "source.go", Line: 5},
 	}
 
 	err := mapping.AddInterval(interval)
 	if err != nil {
-		t.Errorf("AddInterval() failed: %v", err)
+		t.Errorf("AddInterval() error = %v", err)
 	}
 
 	if len(mapping.Additions) != 1 {
-		t.Errorf("Expected 1 addition, got %d", len(mapping.Additions))
+		t.Errorf("AddInterval() Additions length = %v, want 1", len(mapping.Additions))
 	}
 }
 
 func TestHybridMapping_AddInterval_Invalid(t *testing.T) {
-	mapping := NewHybridMapping("gen.gobra", "source.go")
+	mapping := NewHybridMapping("source.go")
 
-	interval := AdditionInterval{
+	invalidInterval := Interval{
 		GenStart:  20,
-		GenEnd:    10, // Invalid: start > end
-		SourcePos: SourcePos{File: "source.go", Line: 5},
-		Kind:      AdditionRequires,
+		GenEnd:    10,
+		SourcePos: Position{File: "source.go", Line: 5},
 	}
 
-	err := mapping.AddInterval(interval)
+	err := mapping.AddInterval(invalidInterval)
 	if err == nil {
-		t.Error("AddInterval() should fail for invalid interval")
+		t.Errorf("AddInterval() expected error for invalid interval, got nil")
 	}
 }
 
 func TestHybridMapping_AddInterval_Overlap(t *testing.T) {
-	mapping := NewHybridMapping("gen.gobra", "source.go")
+	mapping := NewHybridMapping("source.go")
 
-	interval1 := AdditionInterval{
+	interval1 := Interval{
 		GenStart:  10,
 		GenEnd:    20,
-		SourcePos: SourcePos{File: "source.go", Line: 5},
-		Kind:      AdditionRequires,
+		SourcePos: Position{File: "source.go", Line: 5},
 	}
 
-	interval2 := AdditionInterval{
+	interval2 := Interval{
 		GenStart:  15,
-		GenEnd:    25, // Overlaps with interval1
-		SourcePos: SourcePos{File: "source.go", Line: 10},
-		Kind:      AdditionEnsures,
+		GenEnd:    25,
+		SourcePos: Position{File: "source.go", Line: 10},
 	}
 
 	mapping.AddInterval(interval1)
 	err := mapping.AddInterval(interval2)
 
 	if err == nil {
-		t.Error("AddInterval() should fail for overlapping intervals")
+		t.Errorf("AddInterval() expected error for overlapping intervals, got nil")
 	}
 }
 
-func TestHybridMapping_Sort(t *testing.T) {
-	mapping := NewHybridMapping("gen.gobra", "source.go")
+func TestHybridMapping_AutoSort(t *testing.T) {
+	mapping := NewHybridMapping("source.go")
 
-	// Add intervals in random order
-	mapping.AddInterval(AdditionInterval{GenStart: 30, GenEnd: 40, SourcePos: SourcePos{Line: 15}, Kind: AdditionAssert})
-	mapping.AddInterval(AdditionInterval{GenStart: 10, GenEnd: 20, SourcePos: SourcePos{Line: 5}, Kind: AdditionRequires})
-	mapping.AddInterval(AdditionInterval{GenStart: 20, GenEnd: 30, SourcePos: SourcePos{Line: 10}, Kind: AdditionEnsures})
+	mapping.AddInterval(Interval{
+		GenStart:  30,
+		GenEnd:    40,
+		SourcePos: Position{File: "source.go", Line: 15},
+	})
 
-	mapping.Sort()
+	mapping.AddInterval(Interval{
+		GenStart:  10,
+		GenEnd:    20,
+		SourcePos: Position{File: "source.go", Line: 5},
+	})
 
-	// Check if sorted
-	for i := 1; i < len(mapping.Additions); i++ {
-		if mapping.Additions[i-1].GenStart > mapping.Additions[i].GenStart {
-			t.Errorf("Additions not sorted: interval %d starts before interval %d", i-1, i)
-		}
+	mapping.AddInterval(Interval{
+		GenStart:  22,
+		GenEnd:    28,
+		SourcePos: Position{File: "source.go", Line: 10},
+	})
+
+	// Intervals should be automatically sorted
+	if len(mapping.Additions) != 3 {
+		t.Errorf("Expected 3 intervals, got %d", len(mapping.Additions))
+	}
+	if mapping.Additions[0].GenStart != 10 {
+		t.Errorf("First interval GenStart = %v, want 10", mapping.Additions[0].GenStart)
+	}
+	if mapping.Additions[1].GenStart != 22 {
+		t.Errorf("Second interval GenStart = %v, want 22", mapping.Additions[1].GenStart)
+	}
+	if mapping.Additions[2].GenStart != 30 {
+		t.Errorf("Third interval GenStart = %v, want 30", mapping.Additions[2].GenStart)
 	}
 }
 
-func TestHybridMapping_Validate(t *testing.T) {
-	t.Run("valid mapping", func(t *testing.T) {
-		mapping := NewHybridMapping("gen.gobra", "source.go")
-		mapping.AddInterval(AdditionInterval{GenStart: 10, GenEnd: 20, SourcePos: SourcePos{Line: 5}, Kind: AdditionRequires})
-		mapping.AddInterval(AdditionInterval{GenStart: 30, GenEnd: 40, SourcePos: SourcePos{Line: 10}, Kind: AdditionEnsures})
-		mapping.Sort()
+func TestHybridMapping_OverlapDetection(t *testing.T) {
+	t.Run("valid_non_overlapping", func(t *testing.T) {
+		mapping := NewHybridMapping("source.go")
 
-		err := mapping.Validate()
+		err := mapping.AddInterval(Interval{
+			GenStart:  10,
+			GenEnd:    20,
+			SourcePos: Position{File: "source.go", Line: 5},
+		})
 		if err != nil {
-			t.Errorf("Validate() failed for valid mapping: %v", err)
+			t.Errorf("AddInterval() error = %v", err)
+		}
+
+		err = mapping.AddInterval(Interval{
+			GenStart:  30,
+			GenEnd:    40,
+			SourcePos: Position{File: "source.go", Line: 15},
+		})
+		if err != nil {
+			t.Errorf("AddInterval() error = %v", err)
 		}
 	})
 
-	t.Run("invalid - not sorted", func(t *testing.T) {
-		mapping := NewHybridMapping("gen.gobra", "source.go")
-		mapping.AddInterval(AdditionInterval{GenStart: 30, GenEnd: 40, SourcePos: SourcePos{Line: 10}, Kind: AdditionEnsures})
-		mapping.AddInterval(AdditionInterval{GenStart: 10, GenEnd: 20, SourcePos: SourcePos{Line: 5}, Kind: AdditionRequires})
-		// Don't sort
+	t.Run("overlapping_intervals", func(t *testing.T) {
+		mapping := NewHybridMapping("source.go")
 
-		err := mapping.Validate()
+		mapping.AddInterval(Interval{
+			GenStart:  10,
+			GenEnd:    20,
+			SourcePos: Position{File: "source.go", Line: 5},
+		})
+
+		err := mapping.AddInterval(Interval{
+			GenStart:  15,
+			GenEnd:    25,
+			SourcePos: Position{File: "source.go", Line: 10},
+		})
+
 		if err == nil {
-			t.Error("Validate() should fail for unsorted mapping")
-		}
-	})
-
-	t.Run("invalid - overlapping intervals", func(t *testing.T) {
-		mapping := NewHybridMapping("gen.gobra", "source.go")
-		// Manually create overlapping intervals (bypassing AddInterval check)
-		mapping.Additions = []AdditionInterval{
-			{GenStart: 10, GenEnd: 20, SourcePos: SourcePos{Line: 5}, Kind: AdditionRequires},
-			{GenStart: 15, GenEnd: 25, SourcePos: SourcePos{Line: 10}, Kind: AdditionEnsures},
-		}
-
-		err := mapping.Validate()
-		if err == nil {
-			t.Error("Validate() should fail for overlapping intervals")
+			t.Errorf("AddInterval() expected error for overlapping intervals, got nil")
 		}
 	})
 }
 
 func TestHybridMapping_FindInterval(t *testing.T) {
-	mapping := NewHybridMapping("gen.gobra", "source.go")
-	mapping.AddInterval(AdditionInterval{GenStart: 10, GenEnd: 20, SourcePos: SourcePos{Line: 5}, Kind: AdditionRequires})
-	mapping.AddInterval(AdditionInterval{GenStart: 30, GenEnd: 40, SourcePos: SourcePos{Line: 10}, Kind: AdditionEnsures})
-	mapping.Sort()
+	mapping := NewHybridMapping("source.go")
+
+	mapping.AddInterval(Interval{
+		GenStart:  30,
+		GenEnd:    40,
+		SourcePos: Position{File: "source.go", Line: 15},
+	})
+
+	mapping.AddInterval(Interval{
+		GenStart:  10,
+		GenEnd:    20,
+		SourcePos: Position{File: "source.go", Line: 5},
+	})
 
 	tests := []struct {
-		name string
-		line int
-		col  int
-		want bool
+		name     string
+		line     int
+		col      int
+		wantLine int
 	}{
-		{"inside first interval", 15, 5, true},
-		{"inside second interval", 35, 5, true},
-		{"before all intervals", 5, 5, false},
-		{"after all intervals", 50, 5, false},
-		{"between intervals", 25, 5, false},
+		{"inside_first_interval", 15, 5, 5},
+		{"inside_second_interval", 35, 5, 15},
+		{"before_all_intervals", 5, 5, 0},
+		{"after_all_intervals", 50, 5, 0},
+		{"between_intervals", 25, 5, 0},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			interval := mapping.FindInterval(tt.line, tt.col)
-			found := interval != nil
-			if found != tt.want {
-				t.Errorf("FindInterval() = %v, want %v", found, tt.want)
+			if tt.wantLine == 0 {
+				if interval != nil {
+					t.Errorf("FindInterval() = %v, want nil", interval)
+				}
+			} else {
+				if interval == nil {
+					t.Errorf("FindInterval() = nil, want interval with SourcePos.Line %d", tt.wantLine)
+				} else if interval.SourcePos.Line != tt.wantLine {
+					t.Errorf("FindInterval() SourcePos.Line = %v, want %d", interval.SourcePos.Line, tt.wantLine)
+				}
 			}
 		})
 	}
 }
 
 func TestHybridMapping_FindPointMapping(t *testing.T) {
-	mapping := NewHybridMapping("gen.gobra", "source.go")
-	mapping.AddPointMapping(MappingEntry{
+	mapping := NewHybridMapping("source.go")
+
+	mapping.AddPointMapping(PointMapping{
+		GenLine:   20,
+		GenColumn: 10,
+		Orig:      Position{File: "source.go", Line: 10, Column: 15},
+	})
+
+	mapping.AddPointMapping(PointMapping{
 		GenLine:   10,
 		GenColumn: 5,
-		Orig:      SourcePos{File: "source.go", Line: 5, Column: 10},
-		Kind:      "predicate",
+		Orig:      Position{File: "source.go", Line: 5, Column: 10},
 	})
-	mapping.Sort()
 
 	tests := []struct {
-		name string
-		line int
-		col  int
-		want bool
+		name       string
+		line       int
+		col        int
+		wantFound  bool
+		wantLine   int
+		wantColumn int
 	}{
-		{"exact match", 10, 5, true},
-		{"different line", 11, 5, false},
-		{"different column", 10, 6, false},
+		{"exact_match", 10, 5, true, 5, 10},
+		{"different_line", 15, 5, false, 0, 0},
+		{"different_column", 10, 10, false, 0, 0},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			mapping := mapping.FindPointMapping(tt.line, tt.col)
-			found := mapping != nil
-			if found != tt.want {
-				t.Errorf("FindPointMapping() = %v, want %v", found, tt.want)
+			if tt.wantFound {
+				if mapping == nil {
+					t.Errorf("FindPointMapping() = nil, want mapping")
+				} else if mapping.Orig.Line != tt.wantLine || mapping.Orig.Column != tt.wantColumn {
+					t.Errorf("FindPointMapping() = %+v, want Line %d Column %d", mapping.Orig, tt.wantLine, tt.wantColumn)
+				}
+			} else {
+				if mapping != nil {
+					t.Errorf("FindPointMapping() = %+v, want nil", mapping)
+				}
 			}
 		})
 	}
 }
 
 func TestHybridMapping_GetTotalAdditionsBefore(t *testing.T) {
-	mapping := NewHybridMapping("gen.gobra", "source.go")
-	mapping.AddInterval(AdditionInterval{GenStart: 10, GenEnd: 15, SourcePos: SourcePos{Line: 5}, Kind: AdditionRequires}) // 6 lines
-	mapping.AddInterval(AdditionInterval{GenStart: 20, GenEnd: 25, SourcePos: SourcePos{Line: 10}, Kind: AdditionEnsures}) // 6 lines
-	mapping.AddInterval(AdditionInterval{GenStart: 30, GenEnd: 35, SourcePos: SourcePos{Line: 15}, Kind: AdditionAssert})  // 6 lines
+	mapping := NewHybridMapping("source.go")
+
+	mapping.AddInterval(Interval{
+		GenStart:  30,
+		GenEnd:    35,
+		SourcePos: Position{File: "source.go", Line: 15},
+	})
+
+	mapping.AddInterval(Interval{
+		GenStart:  10,
+		GenEnd:    15,
+		SourcePos: Position{File: "source.go", Line: 5},
+	})
+
+	mapping.AddInterval(Interval{
+		GenStart:  20,
+		GenEnd:    25,
+		SourcePos: Position{File: "source.go", Line: 10},
+	})
 
 	tests := []struct {
 		name string
 		line int
 		want int
 	}{
-		{"before all additions", 5, 0},
-		{"after first addition", 18, 6},
-		{"after second addition", 28, 12},
-		{"after third addition", 40, 18},
+		{"before_all_additions", 5, 0},
+		{"after_first_addition", 17, 6},
+		{"after_second_addition", 27, 12},
+		{"after_third_addition", 40, 18},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := mapping.GetTotalAdditionsBefore(tt.line)
-			if got != tt.want {
+			if got := mapping.GetTotalAdditionsBefore(tt.line); got != tt.want {
 				t.Errorf("GetTotalAdditionsBefore() = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func TestHybridMapping_JSON(t *testing.T) {
-	original := NewHybridMapping("gen.gobra", "source.go")
-	original.AddInterval(AdditionInterval{
-		GenStart:    10,
-		GenEnd:      20,
-		GenStartCol: 5,
-		GenEndCol:   15,
-		SourcePos:   SourcePos{File: "source.go", Line: 5, Column: 10},
-		Kind:        AdditionRequires,
-		Description: "test interval",
-	})
-	original.AddPointMapping(MappingEntry{
-		GenLine:   25,
-		GenColumn: 10,
-		Orig:      SourcePos{File: "source.go", Line: 8, Column: 5},
-		Kind:      "predicate",
-	})
-
-	// Convert to JSON
-	data, err := original.ToJSON()
-	if err != nil {
-		t.Fatalf("ToJSON() failed: %v", err)
-	}
-
-	// Convert back from JSON
-	restored, err := FromJSON(data)
-	if err != nil {
-		t.Fatalf("FromJSON() failed: %v", err)
-	}
-
-	// Verify
-	if restored.GenFile != original.GenFile {
-		t.Errorf("GenFile mismatch: got %v, want %v", restored.GenFile, original.GenFile)
-	}
-	if restored.SourceFile != original.SourceFile {
-		t.Errorf("SourceFile mismatch: got %v, want %v", restored.SourceFile, original.SourceFile)
-	}
-	if len(restored.Additions) != len(original.Additions) {
-		t.Errorf("Additions count mismatch: got %d, want %d", len(restored.Additions), len(original.Additions))
-	}
-	if len(restored.PointMappings) != len(original.PointMappings) {
-		t.Errorf("PointMappings count mismatch: got %d, want %d", len(restored.PointMappings), len(original.PointMappings))
-	}
-}
-
-func TestHybridMapping_FileOperations(t *testing.T) {
-	// Create temporary directory
-	tmpDir := t.TempDir()
-	filePath := filepath.Join(tmpDir, "mapping.json")
-
-	original := NewHybridMapping("gen.gobra", "source.go")
-	original.AddInterval(AdditionInterval{
-		GenStart:  10,
-		GenEnd:    20,
-		SourcePos: SourcePos{File: "source.go", Line: 5},
-		Kind:      AdditionRequires,
-	})
-
-	// Save to file
-	err := SaveHybridMappingToFile(original, filePath)
-	if err != nil {
-		t.Fatalf("SaveHybridMappingToFile() failed: %v", err)
-	}
-
-	// Verify file exists
-	if _, err := os.Stat(filePath); os.IsNotExist(err) {
-		t.Fatal("File was not created")
-	}
-
-	// Load from file
-	loaded, err := LoadHybridMappingFromFile(filePath)
-	if err != nil {
-		t.Fatalf("LoadHybridMappingFromFile() failed: %v", err)
-	}
-
-	// Verify
-	if loaded.GenFile != original.GenFile {
-		t.Errorf("GenFile mismatch: got %v, want %v", loaded.GenFile, original.GenFile)
-	}
-	if len(loaded.Additions) != len(original.Additions) {
-		t.Errorf("Additions count mismatch: got %d, want %d", len(loaded.Additions), len(original.Additions))
-	}
-}
-
-func TestVerificationError_IsMapped(t *testing.T) {
+func TestHybridMapping_MapError(t *testing.T) {
 	tests := []struct {
-		name  string
-		error VerificationError
-		want  bool
+		name    string
+		mapping *HybridMapping
+		line    int
+		col     int
+		wantPos Position
+		wantErr bool
 	}{
 		{
-			name: "mapped error",
-			error: VerificationError{
-				File:   "source.go",
-				Line:   10,
-				Column: 5,
-			},
-			want: true,
+			name: "error in predicate with point mapping",
+			mapping: func() *HybridMapping {
+				h := NewHybridMapping("source.go")
+				h.AddInterval(Interval{
+					GenStart:  10,
+					GenEnd:    15,
+					SourcePos: Position{File: "source.go", Line: 5, Column: 10},
+				})
+				h.AddPointMapping(PointMapping{
+					GenLine:   12,
+					GenColumn: 5,
+					Orig:      Position{File: "source.go", Line: 5, Column: 15},
+				})
+				return h
+			}(),
+			line:    12,
+			col:     5,
+			wantPos: Position{File: "source.go", Line: 5, Column: 15},
+			wantErr: false,
 		},
 		{
-			name: "unmapped error - no file",
-			error: VerificationError{
-				Line:   10,
-				Column: 5,
-			},
-			want: false,
+			name: "error in addition with predicate span",
+			mapping: func() *HybridMapping {
+				h := NewHybridMapping("source.go")
+				h.AddInterval(Interval{
+					GenStart:  10,
+					GenEnd:    15,
+					SourcePos: Position{File: "source.go", Line: 5, Column: 10},
+					PredicateSpan: &Position{
+						File:   "source.go",
+						Line:   5,
+						Column: 20,
+					},
+				})
+				return h
+			}(),
+			line:    12,
+			col:     5,
+			wantPos: Position{File: "source.go", Line: 5, Column: 20},
+			wantErr: false,
 		},
 		{
-			name: "unmapped error - no line",
-			error: VerificationError{
-				File:   "source.go",
-				Column: 5,
-			},
-			want: false,
+			name: "error in addition without point mapping or predicate span",
+			mapping: func() *HybridMapping {
+				h := NewHybridMapping("source.go")
+				h.AddInterval(Interval{
+					GenStart:  10,
+					GenEnd:    15,
+					SourcePos: Position{File: "source.go", Line: 5, Column: 10},
+				})
+				return h
+			}(),
+			line:    12,
+			col:     5,
+			wantPos: Position{File: "source.go", Line: 5, Column: 10},
+			wantErr: false,
+		},
+		{
+			name: "error in original code before additions",
+			mapping: func() *HybridMapping {
+				h := NewHybridMapping("source.go")
+				h.AddInterval(Interval{
+					GenStart:  10,
+					GenEnd:    15,
+					SourcePos: Position{File: "source.go", Line: 5, Column: 10},
+				})
+				return h
+			}(),
+			line:    5,
+			col:     10,
+			wantPos: Position{File: "source.go", Line: 5, Column: 10},
+			wantErr: false,
+		},
+		{
+			name: "error in original code after additions",
+			mapping: func() *HybridMapping {
+				h := NewHybridMapping("source.go")
+				h.AddInterval(Interval{
+					GenStart:  10,
+					GenEnd:    15,
+					SourcePos: Position{File: "source.go", Line: 5, Column: 10},
+				})
+				return h
+			}(),
+			line:    20,
+			col:     5,
+			wantPos: Position{File: "source.go", Line: 14, Column: 5}, // 20 - 6 (lines in addition: 10-15 inclusive)
+			wantErr: false,
+		},
+		{
+			name: "invalid position - negative line",
+			mapping: func() *HybridMapping {
+				return NewHybridMapping("source.go")
+			}(),
+			line:    -1,
+			col:     5,
+			wantErr: true,
+		},
+		{
+			name: "invalid position - zero column",
+			mapping: func() *HybridMapping {
+				return NewHybridMapping("source.go")
+			}(),
+			line:    10,
+			col:     0,
+			wantErr: true,
+		},
+		{
+			name: "empty mapping - error in original code",
+			mapping: func() *HybridMapping {
+				return NewHybridMapping("source.go")
+			}(),
+			line:    10,
+			col:     5,
+			wantPos: Position{File: "source.go", Line: 10, Column: 5},
+			wantErr: false,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.error.IsMapped(); got != tt.want {
-				t.Errorf("VerificationError.IsMapped() = %v, want %v", got, tt.want)
+			gotPos, err := tt.mapping.MapError(tt.line, tt.col)
+			if tt.wantErr {
+				if err == nil {
+					t.Errorf("MapError() expected error, got nil")
+				}
+				return
+			}
+			if err != nil {
+				t.Errorf("MapError() unexpected error: %v", err)
+				return
+			}
+			if gotPos != tt.wantPos {
+				t.Errorf("MapError() = %+v, want %+v", gotPos, tt.wantPos)
 			}
 		})
 	}
 }
 
-func TestVerificationError_IsInAddedCode(t *testing.T) {
+func TestLineColToOffset(t *testing.T) {
 	tests := []struct {
-		name  string
-		error VerificationError
-		want  bool
+		name    string
+		lines   []string
+		line    int
+		col     int
+		want    int
+		wantErr bool
 	}{
 		{
-			name: "error in added code via interval",
-			error: VerificationError{
-				File: "source.go",
-				Line: 10,
-				MappingInfo: &ErrorMappingInfo{
-					MappingType: MappingTypeInterval,
-				},
-			},
-			want: true,
+			name:  "simple case",
+			lines: []string{"line1", "line2", "line3"},
+			line:  2,
+			col:   3,
+			want:  8, // "line1" (5) + "\n" (1) + 2 (0-based col from col 3)
 		},
 		{
-			name: "error in added code via point",
-			error: VerificationError{
-				File: "source.go",
-				Line: 10,
-				MappingInfo: &ErrorMappingInfo{
-					MappingType: MappingTypePoint,
-				},
-			},
-			want: true,
+			name:  "first line",
+			lines: []string{"line1", "line2", "line3"},
+			line:  1,
+			col:   1,
+			want:  0,
 		},
 		{
-			name: "error in original code",
-			error: VerificationError{
-				File: "source.go",
-				Line: 10,
-				MappingInfo: &ErrorMappingInfo{
-					MappingType: MappingTypeFallback,
-				},
-			},
-			want: false,
+			name:  "last line",
+			lines: []string{"line1", "line2", "line3"},
+			line:  3,
+			col:   5,
+			want:  16, // "line1\n" (6) + "line2\n" (6) + 4 (0-based col from col 5)
 		},
 		{
-			name: "error without mapping info",
-			error: VerificationError{
-				File: "source.go",
-				Line: 10,
-			},
-			want: false,
+			name:  "empty lines",
+			lines: []string{"", "", ""},
+			line:  2,
+			col:   1,
+			want:  1, // "\n" (1) + 0 (0-based col)
+		},
+		{
+			name:    "invalid line - negative",
+			lines:   []string{"line1", "line2"},
+			line:    -1,
+			col:     1,
+			wantErr: true,
+		},
+		{
+			name:    "invalid line - zero",
+			lines:   []string{"line1", "line2"},
+			line:    0,
+			col:     1,
+			wantErr: true,
+		},
+		{
+			name:    "invalid line - exceeds file length",
+			lines:   []string{"line1", "line2"},
+			line:    5,
+			col:     1,
+			wantErr: true,
+		},
+		{
+			name:    "invalid column - negative",
+			lines:   []string{"line1", "line2"},
+			line:    1,
+			col:     -1,
+			wantErr: true,
+		},
+		{
+			name:    "invalid column - zero",
+			lines:   []string{"line1", "line2"},
+			line:    1,
+			col:     0,
+			wantErr: true,
+		},
+		{
+			name:    "invalid column - exceeds line length",
+			lines:   []string{"line1", "line2"},
+			line:    1,
+			col:     10,
+			wantErr: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.error.IsInAddedCode(); got != tt.want {
-				t.Errorf("VerificationError.IsInAddedCode() = %v, want %v", got, tt.want)
+			got, err := LineColToOffset(tt.lines, tt.line, tt.col)
+			if tt.wantErr {
+				if err == nil {
+					t.Errorf("LineColToOffset() expected error, got nil")
+				}
+				return
+			}
+			if err != nil {
+				t.Errorf("LineColToOffset() unexpected error: %v", err)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("LineColToOffset() = %d, want %d", got, tt.want)
 			}
 		})
 	}
 }
 
-func TestVerificationError_String(t *testing.T) {
+func TestOffsetToLineCol(t *testing.T) {
 	tests := []struct {
 		name     string
-		error    VerificationError
-		contains string
+		content  []byte
+		offset   int
+		wantLine int
+		wantCol  int
+		wantErr  bool
 	}{
 		{
-			name: "mapped error",
-			error: VerificationError{
-				File:    "source.go",
-				Line:    10,
-				Column:  5,
-				Kind:    "assertion failed",
-				Message: "test error",
-			},
-			contains: "source.go:10:5",
+			name:     "simple case",
+			content:  []byte("line1\nline2\nline3"),
+			offset:   8,
+			wantLine: 2,
+			wantCol:  3,
 		},
 		{
-			name: "unmapped error",
-			error: VerificationError{
-				GenLine:   15,
-				GenColumn: 3,
-				Kind:      "assertion failed",
-				Message:   "test error",
-			},
-			contains: "<generated>:15:3",
+			name:     "start of file",
+			content:  []byte("line1\nline2\nline3"),
+			offset:   0,
+			wantLine: 1,
+			wantCol:  1,
 		},
 		{
-			name: "unmapped error with gen file",
-			error: VerificationError{
-				GenFile:   "gen.gobra",
-				GenLine:   15,
-				GenColumn: 3,
-				Kind:      "assertion failed",
-				Message:   "test error",
-			},
-			contains: "gen.gobra:15:3",
+			name:     "end of file",
+			content:  []byte("line1\nline2\nline3"),
+			offset:   16,
+			wantLine: 3,
+			wantCol:  5,
+		},
+		{
+			name:     "after newline",
+			content:  []byte("line1\nline2\nline3"),
+			offset:   6,
+			wantLine: 2,
+			wantCol:  1,
+		},
+		{
+			name:     "empty content",
+			content:  []byte(""),
+			offset:   0,
+			wantLine: 1,
+			wantCol:  1,
+		},
+		{
+			name:     "single line",
+			content:  []byte("single line"),
+			offset:   7,
+			wantLine: 1,
+			wantCol:  8,
+		},
+		{
+			name:     "multiple newlines",
+			content:  []byte("\n\n\n"),
+			offset:   2,
+			wantLine: 3,
+			wantCol:  1,
+		},
+		{
+			name:    "invalid offset - negative",
+			content: []byte("line1\nline2"),
+			offset:  -1,
+			wantErr: true,
+		},
+		{
+			name:    "invalid offset - exceeds content length",
+			content: []byte("line1\nline2"),
+			offset:  100,
+			wantErr: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			str := tt.error.String()
-			if !containsString(str, tt.contains) {
-				t.Errorf("String() = %v, should contain %v", str, tt.contains)
+			gotLine, gotCol, err := OffsetToLineCol(tt.content, tt.offset)
+			if tt.wantErr {
+				if err == nil {
+					t.Errorf("OffsetToLineCol() expected error, got nil")
+				}
+				return
+			}
+			if err != nil {
+				t.Errorf("OffsetToLineCol() unexpected error: %v", err)
+				return
+			}
+			if gotLine != tt.wantLine || gotCol != tt.wantCol {
+				t.Errorf("OffsetToLineCol() = (%d, %d), want (%d, %d)", gotLine, gotCol, tt.wantLine, tt.wantCol)
 			}
 		})
 	}
 }
 
-func TestVerificationError_DetailedString(t *testing.T) {
-	error := VerificationError{
-		File:    "source.go",
-		Line:    10,
-		Column:  5,
-		Kind:    "assertion failed",
-		Message: "test error",
-		MappingInfo: &ErrorMappingInfo{
-			MappingType: MappingTypeInterval,
-			Confidence:  0.95,
-		},
-	}
+func TestLineColOffsetRoundtrip(t *testing.T) {
+	content := []byte("line1\nline2\nline3\nline4")
+	lines := []string{"line1", "line2", "line3", "line4"}
 
-	str := error.DetailedString()
-
-	if !containsString(str, "source.go:10:5") {
-		t.Errorf("DetailedString() should contain file location")
-	}
-	if !containsString(str, "interval") {
-		t.Errorf("DetailedString() should contain mapping type")
-	}
-	if !containsString(str, "0.95") {
-		t.Errorf("DetailedString() should contain confidence")
-	}
-}
-
-func TestIntervalsOverlap(t *testing.T) {
-	tests := []struct {
-		name string
-		a    AdditionInterval
-		b    AdditionInterval
-		want bool
+	testCases := []struct {
+		line int
+		col  int
 	}{
-		{
-			name: "non-overlapping - a before b",
-			a:    AdditionInterval{GenStart: 10, GenEnd: 20},
-			b:    AdditionInterval{GenStart: 30, GenEnd: 40},
-			want: false,
-		},
-		{
-			name: "non-overlapping - b before a",
-			a:    AdditionInterval{GenStart: 30, GenEnd: 40},
-			b:    AdditionInterval{GenStart: 10, GenEnd: 20},
-			want: false,
-		},
-		{
-			name: "overlapping - partial",
-			a:    AdditionInterval{GenStart: 10, GenEnd: 30},
-			b:    AdditionInterval{GenStart: 20, GenEnd: 40},
-			want: true,
-		},
-		{
-			name: "overlapping - one contains other",
-			a:    AdditionInterval{GenStart: 10, GenEnd: 40},
-			b:    AdditionInterval{GenStart: 20, GenEnd: 30},
-			want: true,
-		},
-		{
-			name: "touching - a end == b start",
-			a:    AdditionInterval{GenStart: 10, GenEnd: 20},
-			b:    AdditionInterval{GenStart: 20, GenEnd: 30},
-			want: true,
-		},
-		{
-			name: "same line - non-overlapping columns",
-			a:    AdditionInterval{GenStart: 10, GenEnd: 10, GenStartCol: 1, GenEndCol: 5},
-			b:    AdditionInterval{GenStart: 10, GenEnd: 10, GenStartCol: 10, GenEndCol: 15},
-			want: false,
-		},
-		{
-			name: "same line - overlapping columns",
-			a:    AdditionInterval{GenStart: 10, GenEnd: 10, GenStartCol: 1, GenEndCol: 10},
-			b:    AdditionInterval{GenStart: 10, GenEnd: 10, GenStartCol: 5, GenEndCol: 15},
-			want: true,
-		},
+		{1, 1}, {1, 5}, {2, 1}, {2, 5}, {3, 1}, {3, 5}, {4, 1}, {4, 5},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := intervalsOverlap(tt.a, tt.b)
-			if got != tt.want {
-				t.Errorf("intervalsOverlap() = %v, want %v", got, tt.want)
+	for _, tc := range testCases {
+		t.Run("roundtrip", func(t *testing.T) {
+			// Convert line:col to offset
+			offset, err := LineColToOffset(lines, tc.line, tc.col)
+			if err != nil {
+				t.Fatalf("LineColToOffset() error: %v", err)
+			}
+
+			// Convert offset back to line:col
+			gotLine, gotCol, err := OffsetToLineCol(content, offset)
+			if err != nil {
+				t.Fatalf("OffsetToLineCol() error: %v", err)
+			}
+
+			// Verify roundtrip
+			if gotLine != tc.line || gotCol != tc.col {
+				t.Errorf("Roundtrip failed: (%d, %d) -> offset %d -> (%d, %d)",
+					tc.line, tc.col, offset, gotLine, gotCol)
 			}
 		})
 	}
-}
-
-// Helper function
-func containsString(s, substr string) bool {
-	return len(s) >= len(substr) && (s == substr || len(s) > len(substr) && containsSubstring(s, substr))
-}
-
-func containsSubstring(s, substr string) bool {
-	for i := 0; i <= len(s)-len(substr); i++ {
-		if s[i:i+len(substr)] == substr {
-			return true
-		}
-	}
-	return false
 }

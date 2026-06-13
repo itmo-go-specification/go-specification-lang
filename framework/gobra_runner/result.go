@@ -48,8 +48,8 @@ type ErrorMappingInfo struct {
 	// MappingType indicates how the error was mapped
 	MappingType MappingType `json:"mappingType"`
 
-	// AdditionKind specifies the type of addition if the error was in added code
-	AdditionKind AdditionType `json:"additionKind,omitempty"`
+	// AdditionKind specifies the type of addition if the error was in added code (optional string)
+	AdditionKind string `json:"additionKind,omitempty"`
 
 	// HasPredicateMapping indicates whether a precise predicate mapping was available
 	HasPredicateMapping bool `json:"hasPredicateMapping"`

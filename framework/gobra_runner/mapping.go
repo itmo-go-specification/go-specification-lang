@@ -6,31 +6,28 @@ import (
 	"sort"
 )
 
-func init() {
-	// Initialize file operations for hybrid mapping
-	initFileOps(os.WriteFile, os.ReadFile)
-}
-
+// SourcePos represents a position in source code (legacy, use Position instead)
 type SourcePos struct {
 	File   string `json:"file"`
 	Line   int    `json:"line"`
 	Column int    `json:"col"`
 }
 
+// MappingEntry represents a mapping entry (legacy, use PointMapping instead)
 type MappingEntry struct {
-	GenLine   int `json:"genLine"`
-	GenColumn int `json:"genCol"`
-
-	Orig SourcePos `json:"orig"`
-
-	Kind string `json:"kind"`
+	GenLine   int       `json:"genLine"`
+	GenColumn int       `json:"genCol"`
+	Orig      SourcePos `json:"orig"`
+	Kind      string    `json:"kind"`
 }
 
+// CoordMapping represents coordinate mappings (legacy)
 type CoordMapping struct {
 	GenFile string         `json:"genFile"`
 	Entries []MappingEntry `json:"entries"`
 }
 
+// Lookup finds a mapping entry for the given position
 func (m *CoordMapping) Lookup(line, col int) (MappingEntry, bool) {
 	if len(m.Entries) == 0 {
 		return MappingEntry{}, false
@@ -50,6 +47,7 @@ func (m *CoordMapping) Lookup(line, col int) (MappingEntry, bool) {
 	return m.Entries[idx-1], true
 }
 
+// Sort sorts the mapping entries
 func (m *CoordMapping) Sort() {
 	sort.Slice(m.Entries, func(i, j int) bool {
 		a, b := m.Entries[i], m.Entries[j]
@@ -60,6 +58,7 @@ func (m *CoordMapping) Sort() {
 	})
 }
 
+// LoadMappingFromFile loads a coordinate mapping from a file
 func LoadMappingFromFile(path string) (*CoordMapping, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
@@ -72,6 +71,7 @@ func LoadMappingFromFile(path string) (*CoordMapping, error) {
 	return &m, nil
 }
 
+// SaveMappingToFile saves a coordinate mapping to a file
 func SaveMappingToFile(m *CoordMapping, path string) error {
 	data, err := json.MarshalIndent(m, "", "  ")
 	if err != nil {

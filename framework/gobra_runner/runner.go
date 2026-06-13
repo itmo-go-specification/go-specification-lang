@@ -214,6 +214,12 @@ func mapErrorsWithHybrid(raw []rawError, mapping *HybridMapping, genCode string)
 	result := make([]VerificationError, 0, len(raw))
 	genContent := []byte(genCode)
 
+	// Read original source file content for line/column conversion
+	var sourceContent []byte
+	if mapping != nil && mapping.SourceFile != "" {
+		sourceContent, _ = os.ReadFile(mapping.SourceFile)
+	}
+
 	for _, re := range raw {
 		ve := VerificationError{
 			GenLine:   re.genLine,
@@ -228,8 +234,17 @@ func mapErrorsWithHybrid(raw []rawError, mapping *HybridMapping, genCode string)
 			pos, err := mapping.MapErrorLineCol(re.genLine, re.genColumn, genContent)
 			if err == nil {
 				ve.File = pos.File
+				ve.Offset = pos.Offset
+
 				// Convert offset back to line:col for final error reporting
-				ve.Line, ve.Column = pos.ToLineCol(genContent)
+				// IMPORTANT: Use source content, not generated content!
+				if len(sourceContent) > 0 {
+					ve.Line, ve.Column = pos.ToLineCol(sourceContent)
+				} else {
+					// Fallback: if we can't read source file, use generated content
+					// This won't be accurate but prevents crashes
+					ve.Line, ve.Column = pos.ToLineCol(genContent)
+				}
 			} else {
 				// Mapping failed - add metadata to help with debugging
 				ve.MappingInfo = &ErrorMappingInfo{

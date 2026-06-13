@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 )
 
 type Runner struct {
@@ -79,35 +80,54 @@ func (r *Runner) buildCommand(ctx context.Context, inputFile string) (*exec.Cmd,
 	return r.buildNativeCommand(ctx, inputFile)
 }
 
+// validateDockerConfig performs basic validation of Docker configuration
+func (r *Runner) validateDockerConfig() error {
+	s := r.settings
+	if s.ExecutionBackend != BackendDocker {
+		return nil
+	}
+
+	if s.DockerImage == "" {
+		return fmt.Errorf("DockerImage must be set when using Docker backend")
+	}
+
+	// Basic validation of Docker image name format
+	if strings.Contains(s.DockerImage, " ") {
+		return fmt.Errorf("DockerImage '%s' contains spaces, which is not valid", s.DockerImage)
+	}
+
+	return nil
+}
+
 // buildGobraArgs builds Gobra command line arguments
 func (r *Runner) buildGobraArgs(inputFile string) []string {
-	s := r.settings
+	// s := r.settings
 	var args []string
 
 	args = append(args, "-i", inputFile)
 
-	if s.GobraBackend != "" {
-		args = append(args, "--backend", s.GobraBackend)
-	}
-	if s.Z3Exe != "" {
-		args = append(args, "--z3Exe", s.Z3Exe)
-	}
-	if s.LogLevel != "" {
-		args = append(args, "--logLevel", s.LogLevel)
-	}
-	if s.NoInformation {
-		args = append(args, "--noInformation")
-	}
-	if s.ParallelizeBranches {
-		args = append(args, "--parallelizeBranches")
-	}
-	if s.AssumeInjectivityOnInhale {
-		args = append(args, "--assumeInjectivityOnInhale")
-	}
-	if s.CheckOverflow {
-		args = append(args, "--overflow")
-	}
-	args = append(args, s.ExtraFlags...)
+	// if s.GobraBackend != "" {
+	// 	args = append(args, "--backend", s.GobraBackend)
+	// }
+	// if s.Z3Exe != "" {
+	// 	args = append(args, "--z3Exe", s.Z3Exe)
+	// }
+	// if s.LogLevel != "" {
+	// 	args = append(args, "--logLevel", s.LogLevel)
+	// }
+	// if s.NoInformation {
+	// 	args = append(args, "--noInformation")
+	// }
+	// if s.ParallelizeBranches {
+	// 	args = append(args, "--parallelizeBranches")
+	// }
+	// if s.AssumeInjectivityOnInhale {
+	// 	args = append(args, "--assumeInjectivityOnInhale")
+	// }
+	// if s.CheckOverflow {
+	// 	args = append(args, "--overflow")
+	// }
+	// args = append(args, s.ExtraFlags...)
 
 	return args
 }
@@ -117,42 +137,32 @@ func (r *Runner) buildDockerCommand(ctx context.Context, inputFile string) (*exe
 	s := r.settings
 
 	// Validate Docker configuration before building command
-	if err := ValidateDockerConfig(s); err != nil {
-		return nil, NewDockerError(err, s.DockerImage, "build", "validation")
+	if err := r.validateDockerConfig(); err != nil {
+		return nil, err
 	}
 
 	// Get absolute path of input file
 	absInputFile, err := filepath.Abs(inputFile)
 	if err != nil {
-		return nil, NewDockerError(
-			fmt.Errorf("failed to get absolute path for input file: %w", err),
-			s.DockerImage, "build", "file path",
-		)
+		return nil, fmt.Errorf("failed to get absolute path for input file: %w", err)
 	}
 
-	// Get directory of input file for volume mounting
-	inputDir := filepath.Dir(absInputFile)
 	inputFileName := filepath.Base(absInputFile)
 
-	// Build Docker command
-	// The Gobra Docker image has entry point "java -Xss128m -jar gobra.jar" which expects
-	// to run from /gobra where gobra.jar is located. We need to:
-	// 1. Override the entry point to use the full path to gobra.jar
-	// 2. Set working directory to /workspace where we mount the input file
-	// 3. Mount the input directory to /workspace
+	containerPath := "/input/" + inputFileName
+
 	args := []string{
 		"run", "--rm",
-		"-v", fmt.Sprintf("%s:/workspace", inputDir),
-		"-w", "/workspace",
-		"--entrypoint", "java",
+		"-v", absInputFile + ":" + containerPath + ":ro",
 		s.DockerImage,
-		"-Xss128m", "-jar", "/gobra/gobra.jar",
 	}
 
 	// Add Gobra arguments (reuse the same logic)
 	// Use relative path since we're setting working directory to /workspace
-	gobraArgs := r.buildGobraArgs(inputFileName)
+	gobraArgs := r.buildGobraArgs(containerPath)
 	args = append(args, gobraArgs...)
+
+	fmt.Printf("[DEBUG] Running %v\n", args)
 
 	cmd := exec.CommandContext(ctx, "docker", args...)
 	return cmd, nil

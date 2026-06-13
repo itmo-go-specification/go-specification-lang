@@ -24,10 +24,11 @@ func (r *Runner) Run(gobraCode string, mapping *CoordMapping) (*VerificationResu
 
 **Каждый `VerificationError` содержит:**
 
-- `File`, `Line`, `Column` — позиция в оригинальном Go-файле (заполняется из `mapping`; пустые, если маппинг не передан или не найден)
+- `File`, `Line`, `Column`, `Offset` — позиция в оригинальном Go-файле (заполняется из `mapping`; пустые, если маппинг не передан или не найден)
 - `GenLine`, `GenColumn` — позиция в сгенерированном Gobra-файле (всегда заполнены)
 - `Kind` — вид нарушения: `"precondition"`, `"postcondition"`, `"invariant"`, `"assertion"`, `"unknown"`
 - `Message` — текст ошибки из вывода Gobra
+- `MappingInfo` — дополнительная информация о маппинге (тип маппинга, уверенность, и т.д.)
 
 ## CoordMapping
 
@@ -52,20 +53,53 @@ s.GobraJAR = "/path/to/gobra.jar"
 r := gobra_runner.New(s)
 ```
 
-Поля `Settings`:
+### Поддержка переменных окружения
+
+Настройки могут быть переопределены через переменные окружения:
+
+- `GPMA_EXECUTION_BACKEND` — бэкенд выполнения: `"native"` или `"docker"` (по умолчанию: `"native"`)
+- `GPMA_DOCKER_IMAGE` — Docker образ для Gobra (по умолчанию: `"ghcr.io/viperproject/gobra:latest"`)
+- `GPMA_JAVA_PATH` — путь к Java (по умолчанию: `"java"`)
+- `GPMA_GOBRA_JAR` — путь к gobra.jar (по умолчанию: `"gobra.jar"`)
+- `GPMA_GOBRA_BACKEND` — бэкенд Gobra: `"silicon"` или `"carbon"` (по умолчанию: `"silicon"`)
+- `GPMA_TIMEOUT` — таймаут в формате duration (по умолчанию: `"120s"`)
+- `GPMA_LOG_LEVEL` — уровень логов Gobra (по умолчанию: `"ERROR"`)
+
+### Поля `Settings`
 
 | Поле | Тип | По умолчанию | Описание |
 |------|-----|--------------|----------|
+| **Execution Backend** | | | |
+| `ExecutionBackend` | `Backend` | `BackendNative` | Бэкенд выполнения: `BackendNative` или `BackendDocker` |
+| `DockerImage` | string | `"ghcr.io/viperproject/gobra:latest"` | Docker образ для Gobra |
+| **Native Execution** | | | |
 | `JavaPath` | string | `"java"` | Путь к java |
 | `GobraJAR` | string | `"gobra.jar"` | Путь к gobra.jar |
-| `GobraBin` | string | — | Нативный бинарник (вместо JAR) |
+| `GobraBin` | string | `"gobra"` | Нативный бинарник (вместо JAR) |
+| `Z3Exe` | string | `"z3"` | Путь к Z3 |
+| **Gobra Verifier** | | | |
+| `GobraBackend` | string | `"silicon"` | Бэкенд Gobra: `"silicon"` или `"carbon"` |
 | `Timeout` | time.Duration | `120s` | Таймаут; 0 — без ограничений |
-| `Backend` | string | `"silicon"` | Бэкенд: `"silicon"` или `"carbon"` |
 | `LogLevel` | string | `"ERROR"` | Уровень логов Gobra |
+| **Verification Flags** | | | |
 | `NoInformation` | bool | `true` | Подавить информационные сообщения |
-| `Z3Exe` | string | — | Путь к Z3 |
+| `ParallelizeBranches` | bool | `false` | Параллелизация веток |
+| `AssumeInjectivityOnInhale` | bool | `false` | Предполагать инъективность при inhale |
 | `CheckOverflow` | bool | `false` | Проверка переполнения целых |
 | `ExtraFlags` | []string | — | Дополнительные флаги Gobra |
+
+### Тип `Backend`
+
+```go
+type Backend string
+
+const (
+    BackendNative Backend = "native"
+    BackendDocker Backend = "docker"
+)
+```
+
+Метод `IsValid()` проверяет корректность значения бэкенда.
 
 ## Тестирование
 

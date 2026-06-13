@@ -85,8 +85,8 @@ func (r *Runner) buildArgs(inputFile string) []string {
 
 	args = append(args, "--input", inputFile)
 
-	if s.Backend != "" {
-		args = append(args, "--backend", s.Backend)
+	if s.GobraBackend != "" {
+		args = append(args, "--backend", s.GobraBackend)
 	}
 	if s.Z3Exe != "" {
 		args = append(args, "--z3Exe", s.Z3Exe)

@@ -22,6 +22,9 @@ type VerificationError struct {
 	// Column is the column number in the source file (0 if unmapped)
 	Column int
 
+	// Offset is the byte offset in the source file (0 if unmapped)
+	Offset int
+
 	// Kind specifies the type of error (e.g., "assertion failed", "precondition violated")
 	Kind string
 

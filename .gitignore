@@ -18,3 +18,5 @@ overlays/*
 
 .codeassistant
 .antlr
+
+debug.gobra

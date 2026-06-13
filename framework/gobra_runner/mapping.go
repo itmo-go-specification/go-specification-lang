@@ -6,6 +6,11 @@ import (
 	"sort"
 )
 
+func init() {
+	// Initialize file operations for hybrid mapping
+	initFileOps(os.WriteFile, os.ReadFile)
+}
+
 type SourcePos struct {
 	File   string `json:"file"`
 	Line   int    `json:"line"`

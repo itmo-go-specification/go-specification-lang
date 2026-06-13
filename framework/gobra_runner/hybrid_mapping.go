@@ -46,11 +46,7 @@ func (h *HybridMapping) AddInterval(interval Interval) error {
 func (h *HybridMapping) AddPointMapping(mapping PointMapping) {
 	// Find insertion position using binary search
 	insertPos := sort.Search(len(h.PointMappings), func(i int) bool {
-		m := h.PointMappings[i]
-		if m.GenLine != mapping.GenLine {
-			return m.GenLine > mapping.GenLine
-		}
-		return m.GenColumn >= mapping.GenColumn
+		return h.PointMappings[i].GenOffset >= mapping.GenOffset
 	})
 
 	// Insert at the correct position to maintain sorted order
@@ -59,17 +55,17 @@ func (h *HybridMapping) AddPointMapping(mapping PointMapping) {
 	h.PointMappings[insertPos] = mapping
 }
 
-// FindInterval finds the addition interval that contains the given position
-func (h *HybridMapping) FindInterval(line, col int) *Interval {
+// FindInterval finds the addition interval that contains the given offset
+func (h *HybridMapping) FindInterval(offset int) *Interval {
 	// Binary search for the interval
 	idx := sort.Search(len(h.Additions), func(i int) bool {
-		return h.Additions[i].GenStart > line
+		return h.Additions[i].GenStart > offset
 	})
 
 	// Check the interval before the found position
 	if idx > 0 {
 		interval := &h.Additions[idx-1]
-		if interval.Contains(line, col) {
+		if interval.Contains(offset) {
 			return interval
 		}
 	}
@@ -77,21 +73,17 @@ func (h *HybridMapping) FindInterval(line, col int) *Interval {
 	return nil
 }
 
-// FindPointMapping finds a point mapping for the given position
-func (h *HybridMapping) FindPointMapping(line, col int) *PointMapping {
+// FindPointMapping finds a point mapping for the given offset
+func (h *HybridMapping) FindPointMapping(offset int) *PointMapping {
 	// Binary search for the point mapping
 	idx := sort.Search(len(h.PointMappings), func(i int) bool {
-		m := h.PointMappings[i]
-		if m.GenLine != line {
-			return m.GenLine > line
-		}
-		return m.GenColumn >= col
+		return h.PointMappings[i].GenOffset >= offset
 	})
 
 	// Check if we found an exact match
 	if idx < len(h.PointMappings) {
 		m := h.PointMappings[idx]
-		if m.GenLine == line && m.GenColumn == col {
+		if m.GenOffset == offset {
 			return &m
 		}
 	}
@@ -99,11 +91,11 @@ func (h *HybridMapping) FindPointMapping(line, col int) *PointMapping {
 	return nil
 }
 
-// GetTotalAdditionsBefore returns the total number of lines added before a given position
-func (h *HybridMapping) GetTotalAdditionsBefore(line int) int {
+// GetTotalAdditionsBefore returns the total number of bytes added before a given offset
+func (h *HybridMapping) GetTotalAdditionsBefore(offset int) int {
 	total := 0
 	for _, interval := range h.Additions {
-		if interval.GenEnd < line {
+		if interval.GenEnd < offset {
 			total += interval.Length()
 		}
 	}
@@ -111,17 +103,18 @@ func (h *HybridMapping) GetTotalAdditionsBefore(line int) int {
 }
 
 // MapError maps an error position from generated code to the original source code
-func (h *HybridMapping) MapError(line, col int) (Position, error) {
+// This works with byte offsets internally
+func (h *HybridMapping) MapError(offset int) (Position, error) {
 	// Validate input
-	if line <= 0 || col <= 0 {
-		return Position{}, fmt.Errorf("invalid position: line=%d, col=%d", line, col)
+	if offset < 0 {
+		return Position{}, fmt.Errorf("invalid offset: %d", offset)
 	}
 
 	// Level 1: Check if the error is within an addition interval
-	interval := h.FindInterval(line, col)
+	interval := h.FindInterval(offset)
 	if interval != nil {
 		// Use point mapping if available
-		pointMapping := h.FindPointMapping(line, col)
+		pointMapping := h.FindPointMapping(offset)
 		if pointMapping != nil {
 			return pointMapping.Orig, nil
 		}
@@ -136,16 +129,29 @@ func (h *HybridMapping) MapError(line, col int) (Position, error) {
 	}
 
 	// Level 2: Error is in original code - compute position by subtracting additions
-	originalLine := line - h.GetTotalAdditionsBefore(line)
+	originalOffset := offset - h.GetTotalAdditionsBefore(offset)
 
-	// Ensure we don't return negative or zero line numbers
-	if originalLine <= 0 {
-		originalLine = 1
+	// Ensure we don't return negative offsets
+	if originalOffset < 0 {
+		originalOffset = 0
 	}
 
 	return Position{
 		File:   h.SourceFile,
-		Line:   originalLine,
-		Column: col,
+		Offset: originalOffset,
 	}, nil
+}
+
+// MapErrorLineCol maps an error position from generated code (line, col) to the original source code
+// This is a convenience function that converts line/col to offset, maps it, then converts back
+// This should only be used for final error reporting
+func (h *HybridMapping) MapErrorLineCol(line, col int, genContent []byte) (Position, error) {
+	// Convert line/col to offset
+	offset, err := LineColToOffset(genContent, line, col)
+	if err != nil {
+		return Position{}, fmt.Errorf("failed to convert line:col to offset: %w", err)
+	}
+
+	// Map the error using offset
+	return h.MapError(offset)
 }

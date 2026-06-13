@@ -6,26 +6,35 @@ import (
 
 // LineColToOffset converts a line:column position to a byte offset
 // This is a helper function that can be used when working with file contents
-func LineColToOffset(lines []string, line, col int) (int, error) {
+func LineColToOffset(content []byte, line, col int) (int, error) {
 	if line <= 0 || col <= 0 {
 		return 0, fmt.Errorf("invalid position: line=%d, col=%d", line, col)
 	}
-	if line > len(lines) {
-		return 0, fmt.Errorf("line %d exceeds file length %d", line, len(lines))
-	}
 
 	offset := 0
-	for i := 0; i < line-1; i++ {
-		offset += len(lines[i]) + 1 // +1 for newline
+	currentLine := 1
+	currentCol := 1
+
+	for i := 0; i < len(content); i++ {
+		if currentLine == line && currentCol == col {
+			return offset, nil
+		}
+
+		if content[i] == '\n' {
+			currentLine++
+			currentCol = 1
+		} else {
+			currentCol++
+		}
+		offset++
 	}
 
-	// Add column offset (convert to 0-based)
-	if col > len(lines[line-1])+1 {
-		return 0, fmt.Errorf("column %d exceeds line length %d", col, len(lines[line-1])+1)
+	// If we reach the end, check if the position is at the end of the file
+	if currentLine == line && currentCol == col {
+		return offset, nil
 	}
-	offset += col - 1
 
-	return offset, nil
+	return 0, fmt.Errorf("position line:%d, col:%d not found in content", line, col)
 }
 
 // OffsetToLineCol converts a byte offset to a line:column position
@@ -54,14 +63,6 @@ func intervalsOverlap(a, b Interval) bool {
 	// Check if intervals overlap (including touching)
 	if a.GenEnd < b.GenStart || b.GenEnd < a.GenStart {
 		return false
-	}
-
-	// If they're on the same line, check columns
-	if a.GenStart == b.GenStart && a.GenEnd == b.GenEnd {
-		if a.GenStartCol > 0 && b.GenEndCol > 0 {
-			// Both have column info - check overlap
-			return !(a.GenEndCol < b.GenStartCol || b.GenEndCol < a.GenStartCol)
-		}
 	}
 
 	return true

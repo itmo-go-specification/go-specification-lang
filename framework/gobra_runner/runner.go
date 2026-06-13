@@ -43,7 +43,7 @@ func (r *Runner) RunWithMapping(gobraCode string, mapping *HybridMapping) (*Veri
 
 	output := string(rawOut)
 	rawErrors := parseGobraOutput(output, tmpFile)
-	mappedErrors := mapErrorsWithHybrid(rawErrors, mapping)
+	mappedErrors := mapErrorsWithHybrid(rawErrors, mapping, gobraCode)
 
 	exitOK := runErr == nil
 	hasVerifErrors := len(mappedErrors) > 0
@@ -185,8 +185,9 @@ func writeTempFile(content string) (string, error) {
 }
 
 // mapErrorsWithHybrid maps errors using the hybrid mapping system
-func mapErrorsWithHybrid(raw []rawError, mapping *HybridMapping) []VerificationError {
+func mapErrorsWithHybrid(raw []rawError, mapping *HybridMapping, genCode string) []VerificationError {
 	result := make([]VerificationError, 0, len(raw))
+	genContent := []byte(genCode)
 
 	for _, re := range raw {
 		ve := VerificationError{
@@ -198,11 +199,12 @@ func mapErrorsWithHybrid(raw []rawError, mapping *HybridMapping) []VerificationE
 
 		// Try to map using hybrid mapping
 		if mapping != nil {
-			pos, err := mapping.MapError(re.genLine, re.genColumn)
+			// Convert line:col to offset for internal processing
+			pos, err := mapping.MapErrorLineCol(re.genLine, re.genColumn, genContent)
 			if err == nil {
 				ve.File = pos.File
-				ve.Line = pos.Line
-				ve.Column = pos.Column
+				// Convert offset back to line:col for final error reporting
+				ve.Line, ve.Column = pos.ToLineCol(genContent)
 			} else {
 				// Mapping failed - add metadata to help with debugging
 				ve.MappingInfo = &ErrorMappingInfo{

@@ -63,9 +63,9 @@ func main() {
 			mapping: func() *HybridMapping {
 				m := NewHybridMapping("test.go")
 				m.AddInterval(Interval{
-					GenStart:  2,
-					GenEnd:    4,
-					SourcePos: Position{File: "test.go", Line: 2, Column: 1},
+					GenStart:  20, // Offset in generated code
+					GenEnd:    40,
+					SourcePos: Position{File: "test.go", Offset: 10}, // Offset in original code
 				})
 				return m
 			}(),
@@ -339,9 +339,9 @@ func TestMapErrorsWithHybrid(t *testing.T) {
 			mapping: func() *HybridMapping {
 				m := NewHybridMapping("test.go")
 				m.AddInterval(Interval{
-					GenStart:  5,
-					GenEnd:    15,
-					SourcePos: Position{File: "test.go", Line: 5, Column: 1},
+					GenStart:  50, // Offset in generated code
+					GenEnd:    150,
+					SourcePos: Position{File: "test.go", Offset: 25}, // Offset in original code
 				})
 				return m
 			}(),
@@ -360,7 +360,9 @@ func TestMapErrorsWithHybrid(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			errors := mapErrorsWithHybrid(tt.raw, tt.mapping)
+			// Create sample generated code for offset conversion
+			genCode := "package main\n\nfunc main() {\n\t// Line 1\n\t// Line 2\n\t// Line 3\n\t// Line 4\n\t// Line 5\n\t// Line 6\n\t// Line 7\n\t// Line 8\n\t// Line 9\n\t// Line 10\n}\n"
+			errors := mapErrorsWithHybrid(tt.raw, tt.mapping, genCode)
 
 			if len(errors) != tt.wantLen {
 				t.Errorf("mapErrorsWithHybrid() len = %d, want %d", len(errors), tt.wantLen)

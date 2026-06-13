@@ -13,29 +13,27 @@ func TestInterval_IsValid(t *testing.T) {
 		{
 			name: "valid interval",
 			interval: Interval{
-				GenStart:  10,
-				GenEnd:    20,
-				SourcePos: Position{File: "test.go", Line: 5},
+				GenStart:  100, // Offset in generated code
+				GenEnd:    200,
+				SourcePos: Position{File: "test.go", Offset: 50}, // Offset in original code
 			},
 			want: true,
 		},
 		{
-			name: "valid interval with columns",
+			name: "valid interval with same start and end",
 			interval: Interval{
-				GenStart:    10,
-				GenEnd:      10,
-				GenStartCol: 5,
-				GenEndCol:   15,
-				SourcePos:   Position{File: "test.go", Line: 5},
+				GenStart:  100, // Offset in generated code
+				GenEnd:    100,
+				SourcePos: Position{File: "test.go", Offset: 50}, // Offset in original code
 			},
 			want: true,
 		},
 		{
 			name: "invalid - start > end",
 			interval: Interval{
-				GenStart:  20,
-				GenEnd:    10,
-				SourcePos: Position{File: "test.go", Line: 5},
+				GenStart:  200, // Offset in generated code
+				GenEnd:    100,
+				SourcePos: Position{File: "test.go", Offset: 50}, // Offset in original code
 			},
 			want: false,
 		},
@@ -44,18 +42,7 @@ func TestInterval_IsValid(t *testing.T) {
 			interval: Interval{
 				GenStart:  -1,
 				GenEnd:    10,
-				SourcePos: Position{File: "test.go", Line: 5},
-			},
-			want: false,
-		},
-		{
-			name: "invalid - column start > column end",
-			interval: Interval{
-				GenStart:    10,
-				GenEnd:      10,
-				GenStartCol: 15,
-				GenEndCol:   5,
-				SourcePos:   Position{File: "test.go", Line: 5},
+				SourcePos: Position{File: "test.go", Offset: 5},
 			},
 			want: false,
 		},
@@ -74,8 +61,7 @@ func TestInterval_Contains(t *testing.T) {
 	tests := []struct {
 		name     string
 		interval Interval
-		line     int
-		col      int
+		offset   int
 		want     bool
 	}{
 		{
@@ -84,9 +70,8 @@ func TestInterval_Contains(t *testing.T) {
 				GenStart: 10,
 				GenEnd:   20,
 			},
-			line: 15,
-			col:  5,
-			want: true,
+			offset: 15,
+			want:   true,
 		},
 		{
 			name: "position before interval",
@@ -94,9 +79,8 @@ func TestInterval_Contains(t *testing.T) {
 				GenStart: 10,
 				GenEnd:   20,
 			},
-			line: 5,
-			col:  5,
-			want: false,
+			offset: 5,
+			want:   false,
 		},
 		{
 			name: "position after interval",
@@ -104,59 +88,50 @@ func TestInterval_Contains(t *testing.T) {
 				GenStart: 10,
 				GenEnd:   20,
 			},
-			line: 25,
-			col:  5,
-			want: false,
+			offset: 25,
+			want:   false,
 		},
 		{
-			name: "position on start line before column",
+			name: "position on start boundary",
 			interval: Interval{
-				GenStart:    10,
-				GenEnd:      20,
-				GenStartCol: 5,
+				GenStart: 10,
+				GenEnd:   20,
 			},
-			line: 10,
-			col:  3,
-			want: false,
+			offset: 10,
+			want:   true,
 		},
 		{
-			name: "position on start line after column",
+			name: "position on end boundary",
 			interval: Interval{
-				GenStart:    10,
-				GenEnd:      20,
-				GenStartCol: 5,
+				GenStart: 10,
+				GenEnd:   20,
 			},
-			line: 10,
-			col:  7,
-			want: true,
+			offset: 20,
+			want:   true,
 		},
 		{
-			name: "position on end line after column",
+			name: "position after end boundary",
 			interval: Interval{
-				GenStart:  10,
-				GenEnd:    20,
-				GenEndCol: 15,
+				GenStart: 10,
+				GenEnd:   20,
 			},
-			line: 20,
-			col:  20,
-			want: false,
+			offset: 25,
+			want:   false,
 		},
 		{
-			name: "position on end line before column",
+			name: "position on end boundary",
 			interval: Interval{
-				GenStart:  10,
-				GenEnd:    20,
-				GenEndCol: 15,
+				GenStart: 10,
+				GenEnd:   20,
 			},
-			line: 20,
-			col:  10,
-			want: true,
+			offset: 20,
+			want:   true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.interval.Contains(tt.line, tt.col); got != tt.want {
+			if got := tt.interval.Contains(tt.offset); got != tt.want {
 				t.Errorf("Interval.Contains() = %v, want %v", got, tt.want)
 			}
 		})
@@ -216,7 +191,7 @@ func TestHybridMapping_AddInterval(t *testing.T) {
 	interval := Interval{
 		GenStart:  10,
 		GenEnd:    20,
-		SourcePos: Position{File: "source.go", Line: 5},
+		SourcePos: Position{File: "source.go", Offset: 5},
 	}
 
 	err := mapping.AddInterval(interval)
@@ -235,7 +210,7 @@ func TestHybridMapping_AddInterval_Invalid(t *testing.T) {
 	invalidInterval := Interval{
 		GenStart:  20,
 		GenEnd:    10,
-		SourcePos: Position{File: "source.go", Line: 5},
+		SourcePos: Position{File: "source.go", Offset: 5},
 	}
 
 	err := mapping.AddInterval(invalidInterval)
@@ -250,13 +225,13 @@ func TestHybridMapping_AddInterval_Overlap(t *testing.T) {
 	interval1 := Interval{
 		GenStart:  10,
 		GenEnd:    20,
-		SourcePos: Position{File: "source.go", Line: 5},
+		SourcePos: Position{File: "source.go", Offset: 5},
 	}
 
 	interval2 := Interval{
 		GenStart:  15,
 		GenEnd:    25,
-		SourcePos: Position{File: "source.go", Line: 10},
+		SourcePos: Position{File: "source.go", Offset: 10},
 	}
 
 	mapping.AddInterval(interval1)
@@ -273,19 +248,19 @@ func TestHybridMapping_AutoSort(t *testing.T) {
 	mapping.AddInterval(Interval{
 		GenStart:  30,
 		GenEnd:    40,
-		SourcePos: Position{File: "source.go", Line: 15},
+		SourcePos: Position{File: "source.go", Offset: 15},
 	})
 
 	mapping.AddInterval(Interval{
 		GenStart:  10,
 		GenEnd:    20,
-		SourcePos: Position{File: "source.go", Line: 5},
+		SourcePos: Position{File: "source.go", Offset: 5},
 	})
 
 	mapping.AddInterval(Interval{
 		GenStart:  22,
 		GenEnd:    28,
-		SourcePos: Position{File: "source.go", Line: 10},
+		SourcePos: Position{File: "source.go", Offset: 10},
 	})
 
 	// Intervals should be automatically sorted
@@ -310,7 +285,7 @@ func TestHybridMapping_OverlapDetection(t *testing.T) {
 		err := mapping.AddInterval(Interval{
 			GenStart:  10,
 			GenEnd:    20,
-			SourcePos: Position{File: "source.go", Line: 5},
+			SourcePos: Position{File: "source.go", Offset: 5},
 		})
 		if err != nil {
 			t.Errorf("AddInterval() error = %v", err)
@@ -319,7 +294,7 @@ func TestHybridMapping_OverlapDetection(t *testing.T) {
 		err = mapping.AddInterval(Interval{
 			GenStart:  30,
 			GenEnd:    40,
-			SourcePos: Position{File: "source.go", Line: 15},
+			SourcePos: Position{File: "source.go", Offset: 15},
 		})
 		if err != nil {
 			t.Errorf("AddInterval() error = %v", err)
@@ -332,13 +307,13 @@ func TestHybridMapping_OverlapDetection(t *testing.T) {
 		mapping.AddInterval(Interval{
 			GenStart:  10,
 			GenEnd:    20,
-			SourcePos: Position{File: "source.go", Line: 5},
+			SourcePos: Position{File: "source.go", Offset: 5},
 		})
 
 		err := mapping.AddInterval(Interval{
 			GenStart:  15,
 			GenEnd:    25,
-			SourcePos: Position{File: "source.go", Line: 10},
+			SourcePos: Position{File: "source.go", Offset: 10},
 		})
 
 		if err == nil {
@@ -353,31 +328,30 @@ func TestHybridMapping_FindInterval(t *testing.T) {
 	mapping.AddInterval(Interval{
 		GenStart:  30,
 		GenEnd:    40,
-		SourcePos: Position{File: "source.go", Line: 15},
+		SourcePos: Position{File: "source.go", Offset: 15},
 	})
 
 	mapping.AddInterval(Interval{
 		GenStart:  10,
 		GenEnd:    20,
-		SourcePos: Position{File: "source.go", Line: 5},
+		SourcePos: Position{File: "source.go", Offset: 5},
 	})
 
 	tests := []struct {
 		name     string
-		line     int
-		col      int
+		offset   int
 		wantLine int
 	}{
-		{"inside_first_interval", 15, 5, 5},
-		{"inside_second_interval", 35, 5, 15},
-		{"before_all_intervals", 5, 5, 0},
-		{"after_all_intervals", 50, 5, 0},
-		{"between_intervals", 25, 5, 0},
+		{"inside_first_interval", 15, 5},
+		{"inside_second_interval", 35, 15},
+		{"before_all_intervals", 5, 0},
+		{"after_all_intervals", 50, 0},
+		{"between_intervals", 25, 0},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			interval := mapping.FindInterval(tt.line, tt.col)
+			interval := mapping.FindInterval(tt.offset)
 			if tt.wantLine == 0 {
 				if interval != nil {
 					t.Errorf("FindInterval() = %v, want nil", interval)
@@ -385,8 +359,8 @@ func TestHybridMapping_FindInterval(t *testing.T) {
 			} else {
 				if interval == nil {
 					t.Errorf("FindInterval() = nil, want interval with SourcePos.Line %d", tt.wantLine)
-				} else if interval.SourcePos.Line != tt.wantLine {
-					t.Errorf("FindInterval() SourcePos.Line = %v, want %d", interval.SourcePos.Line, tt.wantLine)
+				} else if interval.SourcePos.Offset != tt.wantLine {
+					t.Errorf("FindInterval() SourcePos.Line = %v, want %d", interval.SourcePos.Offset, tt.wantLine)
 				}
 			}
 		})
@@ -397,41 +371,37 @@ func TestHybridMapping_FindPointMapping(t *testing.T) {
 	mapping := NewHybridMapping("source.go")
 
 	mapping.AddPointMapping(PointMapping{
-		GenLine:   20,
-		GenColumn: 10,
-		Orig:      Position{File: "source.go", Line: 10, Column: 15},
+		GenOffset: 200,                                      // Offset in generated code
+		Orig:      Position{File: "source.go", Offset: 100}, // Offset in original code
 	})
 
 	mapping.AddPointMapping(PointMapping{
-		GenLine:   10,
-		GenColumn: 5,
-		Orig:      Position{File: "source.go", Line: 5, Column: 10},
+		GenOffset: 100,                                     // Offset in generated code
+		Orig:      Position{File: "source.go", Offset: 50}, // Offset in original code
 	})
 
 	tests := []struct {
 		name       string
-		line       int
-		col        int
+		offset     int
 		wantFound  bool
-		wantLine   int
-		wantColumn int
+		wantOffset int
 	}{
-		{"exact_match", 10, 5, true, 5, 10},
-		{"different_line", 15, 5, false, 0, 0},
-		{"different_column", 10, 10, false, 0, 0},
+		{"exact_match", 100, true, 50},
+		{"different_offset", 150, false, 0},
+		{"before_mapping", 50, false, 0},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			mapping := mapping.FindPointMapping(tt.line, tt.col)
+			pointMapping := mapping.FindPointMapping(tt.offset)
 			if tt.wantFound {
-				if mapping == nil {
+				if pointMapping == nil {
 					t.Errorf("FindPointMapping() = nil, want mapping")
-				} else if mapping.Orig.Line != tt.wantLine || mapping.Orig.Column != tt.wantColumn {
-					t.Errorf("FindPointMapping() = %+v, want Line %d Column %d", mapping.Orig, tt.wantLine, tt.wantColumn)
+				} else if pointMapping.Orig.Offset != tt.wantOffset {
+					t.Errorf("FindPointMapping() = %+v, want Offset %d", pointMapping.Orig, tt.wantOffset)
 				}
 			} else {
-				if mapping != nil {
+				if pointMapping != nil {
 					t.Errorf("FindPointMapping() = %+v, want nil", mapping)
 				}
 			}
@@ -445,19 +415,19 @@ func TestHybridMapping_GetTotalAdditionsBefore(t *testing.T) {
 	mapping.AddInterval(Interval{
 		GenStart:  30,
 		GenEnd:    35,
-		SourcePos: Position{File: "source.go", Line: 15},
+		SourcePos: Position{File: "source.go", Offset: 15},
 	})
 
 	mapping.AddInterval(Interval{
 		GenStart:  10,
 		GenEnd:    15,
-		SourcePos: Position{File: "source.go", Line: 5},
+		SourcePos: Position{File: "source.go", Offset: 5},
 	})
 
 	mapping.AddInterval(Interval{
 		GenStart:  20,
 		GenEnd:    25,
-		SourcePos: Position{File: "source.go", Line: 10},
+		SourcePos: Position{File: "source.go", Offset: 10},
 	})
 
 	tests := []struct {
@@ -484,8 +454,7 @@ func TestHybridMapping_MapError(t *testing.T) {
 	tests := []struct {
 		name    string
 		mapping *HybridMapping
-		line    int
-		col     int
+		offset  int
 		wantPos Position
 		wantErr bool
 	}{
@@ -496,19 +465,16 @@ func TestHybridMapping_MapError(t *testing.T) {
 				h.AddInterval(Interval{
 					GenStart:  10,
 					GenEnd:    15,
-					SourcePos: Position{File: "source.go", Line: 5, Column: 10},
+					SourcePos: Position{File: "source.go", Offset: 5},
 				})
 				h.AddPointMapping(PointMapping{
-					GenLine:   12,
-					GenColumn: 5,
-					Orig:      Position{File: "source.go", Line: 5, Column: 15},
+					GenOffset: 12,
+					Orig:      Position{File: "source.go", Offset: 5},
 				})
 				return h
 			}(),
-			line:    12,
-			col:     5,
-			wantPos: Position{File: "source.go", Line: 5, Column: 15},
-			wantErr: false,
+			offset:  12,
+			wantPos: Position{File: "source.go", Offset: 5},
 		},
 		{
 			name: "error in addition with predicate span",
@@ -517,19 +483,16 @@ func TestHybridMapping_MapError(t *testing.T) {
 				h.AddInterval(Interval{
 					GenStart:  10,
 					GenEnd:    15,
-					SourcePos: Position{File: "source.go", Line: 5, Column: 10},
+					SourcePos: Position{File: "source.go", Offset: 5},
 					PredicateSpan: &Position{
 						File:   "source.go",
-						Line:   5,
-						Column: 20,
+						Offset: 20,
 					},
 				})
 				return h
 			}(),
-			line:    12,
-			col:     5,
-			wantPos: Position{File: "source.go", Line: 5, Column: 20},
-			wantErr: false,
+			offset:  12,
+			wantPos: Position{File: "source.go", Offset: 20},
 		},
 		{
 			name: "error in addition without point mapping or predicate span",
@@ -538,14 +501,12 @@ func TestHybridMapping_MapError(t *testing.T) {
 				h.AddInterval(Interval{
 					GenStart:  10,
 					GenEnd:    15,
-					SourcePos: Position{File: "source.go", Line: 5, Column: 10},
+					SourcePos: Position{File: "source.go", Offset: 5},
 				})
 				return h
 			}(),
-			line:    12,
-			col:     5,
-			wantPos: Position{File: "source.go", Line: 5, Column: 10},
-			wantErr: false,
+			offset:  12,
+			wantPos: Position{File: "source.go", Offset: 5},
 		},
 		{
 			name: "error in original code before additions",
@@ -554,14 +515,12 @@ func TestHybridMapping_MapError(t *testing.T) {
 				h.AddInterval(Interval{
 					GenStart:  10,
 					GenEnd:    15,
-					SourcePos: Position{File: "source.go", Line: 5, Column: 10},
+					SourcePos: Position{File: "source.go", Offset: 5},
 				})
 				return h
 			}(),
-			line:    5,
-			col:     10,
-			wantPos: Position{File: "source.go", Line: 5, Column: 10},
-			wantErr: false,
+			offset:  5,
+			wantPos: Position{File: "source.go", Offset: 5},
 		},
 		{
 			name: "error in original code after additions",
@@ -570,31 +529,27 @@ func TestHybridMapping_MapError(t *testing.T) {
 				h.AddInterval(Interval{
 					GenStart:  10,
 					GenEnd:    15,
-					SourcePos: Position{File: "source.go", Line: 5, Column: 10},
+					SourcePos: Position{File: "source.go", Offset: 5},
 				})
 				return h
 			}(),
-			line:    20,
-			col:     5,
-			wantPos: Position{File: "source.go", Line: 14, Column: 5}, // 20 - 6 (lines in addition: 10-15 inclusive)
-			wantErr: false,
+			offset:  20,
+			wantPos: Position{File: "source.go", Offset: 14}, // 20 - 6 (lines in addition: 10-15 inclusive)
 		},
 		{
 			name: "invalid position - negative line",
 			mapping: func() *HybridMapping {
 				return NewHybridMapping("source.go")
 			}(),
-			line:    -1,
-			col:     5,
+			offset:  -1,
 			wantErr: true,
 		},
 		{
-			name: "invalid position - zero column",
+			name: "invalid position - negative offset",
 			mapping: func() *HybridMapping {
 				return NewHybridMapping("source.go")
 			}(),
-			line:    10,
-			col:     0,
+			offset:  -1,
 			wantErr: true,
 		},
 		{
@@ -602,16 +557,14 @@ func TestHybridMapping_MapError(t *testing.T) {
 			mapping: func() *HybridMapping {
 				return NewHybridMapping("source.go")
 			}(),
-			line:    10,
-			col:     5,
-			wantPos: Position{File: "source.go", Line: 10, Column: 5},
-			wantErr: false,
+			offset:  10,
+			wantPos: Position{File: "source.go", Offset: 10},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			gotPos, err := tt.mapping.MapError(tt.line, tt.col)
+			gotPos, err := tt.mapping.MapError(tt.offset)
 			if tt.wantErr {
 				if err == nil {
 					t.Errorf("MapError() expected error, got nil")
@@ -632,87 +585,82 @@ func TestHybridMapping_MapError(t *testing.T) {
 func TestLineColToOffset(t *testing.T) {
 	tests := []struct {
 		name    string
-		lines   []string
+		content []byte
 		line    int
 		col     int
 		want    int
 		wantErr bool
 	}{
 		{
-			name:  "simple case",
-			lines: []string{"line1", "line2", "line3"},
-			line:  2,
-			col:   3,
-			want:  8, // "line1" (5) + "\n" (1) + 2 (0-based col from col 3)
+			name:    "simple case",
+			content: []byte("line1\nline2\nline3"),
+			line:    2,
+			col:     3,
+			want:    8, // "line1" (5) + "\n" (1) + 2 (0-based col from col 3)
 		},
 		{
-			name:  "first line",
-			lines: []string{"line1", "line2", "line3"},
-			line:  1,
-			col:   1,
-			want:  0,
+			name:    "first line",
+			content: []byte("line1\nline2\nline3"),
+			line:    1,
+			col:     1,
+			want:    0,
 		},
 		{
-			name:  "last line",
-			lines: []string{"line1", "line2", "line3"},
-			line:  3,
-			col:   5,
-			want:  16, // "line1\n" (6) + "line2\n" (6) + 4 (0-based col from col 5)
+			name:    "last line",
+			content: []byte("line1\nline2\nline3"),
+			line:    3,
+			col:     5,
+			want:    16, // "line1\n" (6) + "line2\n" (6) + 4 (0-based col from col 5)
 		},
 		{
-			name:  "empty lines",
-			lines: []string{"", "", ""},
-			line:  2,
-			col:   1,
-			want:  1, // "\n" (1) + 0 (0-based col)
+			name:    "empty lines",
+			content: []byte("\n\n"),
+			line:    2,
+			col:     1,
+			want:    1, // "\n" (1) + 0 (0-based col)
 		},
 		{
 			name:    "invalid line - negative",
-			lines:   []string{"line1", "line2"},
+			content: []byte("line1\nline2\nline3"),
 			line:    -1,
-			col:     1,
 			wantErr: true,
 		},
 		{
 			name:    "invalid line - zero",
-			lines:   []string{"line1", "line2"},
+			content: []byte("line1\nline2\nline3"),
 			line:    0,
-			col:     1,
 			wantErr: true,
 		},
 		{
 			name:    "invalid line - exceeds file length",
-			lines:   []string{"line1", "line2"},
+			content: []byte("line1\nline2\nline3"),
 			line:    5,
-			col:     1,
 			wantErr: true,
 		},
 		{
 			name:    "invalid column - negative",
-			lines:   []string{"line1", "line2"},
+			content: []byte("line1\nline2\nline3"),
 			line:    1,
 			col:     -1,
 			wantErr: true,
 		},
 		{
 			name:    "invalid column - zero",
-			lines:   []string{"line1", "line2"},
+			content: []byte("line1\nline2\nline3"),
 			line:    1,
-			col:     0,
 			wantErr: true,
 		},
 		{
 			name:    "invalid column - exceeds line length",
-			lines:   []string{"line1", "line2"},
+			content: []byte("line1\nline2\nline3"),
 			line:    1,
-			col:     10,
 			wantErr: true,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := LineColToOffset(tt.lines, tt.line, tt.col)
+			got, err := LineColToOffset(tt.content, tt.line, tt.col)
 			if tt.wantErr {
 				if err == nil {
 					t.Errorf("LineColToOffset() expected error, got nil")
@@ -824,7 +772,6 @@ func TestOffsetToLineCol(t *testing.T) {
 
 func TestLineColOffsetRoundtrip(t *testing.T) {
 	content := []byte("line1\nline2\nline3\nline4")
-	lines := []string{"line1", "line2", "line3", "line4"}
 
 	testCases := []struct {
 		line int
@@ -836,7 +783,7 @@ func TestLineColOffsetRoundtrip(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run("roundtrip", func(t *testing.T) {
 			// Convert line:col to offset
-			offset, err := LineColToOffset(lines, tc.line, tc.col)
+			offset, err := LineColToOffset(content, tc.line, tc.col)
 			if err != nil {
 				t.Fatalf("LineColToOffset() error: %v", err)
 			}

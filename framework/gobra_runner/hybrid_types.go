@@ -1,25 +1,53 @@
 package gobra_runner
 
-// Position represents a position in source code
+// Position represents a position in source code using byte offset
 type Position struct {
 	File   string
-	Line   int
-	Column int
+	Offset int // Byte offset in the file (0-based)
+}
+
+// ToLineCol converts the offset to line and column numbers
+// This should only be called for final error reporting
+func (p *Position) ToLineCol(content []byte) (line, col int) {
+	if p.Offset < 0 {
+		return 1, 1
+	}
+	if p.Offset >= len(content) {
+		// Offset is at end of file
+		line = 1
+		col = len(content) + 1
+		for i := 0; i < len(content); i++ {
+			if content[i] == '\n' {
+				line++
+				col = 1
+			} else {
+				col++
+			}
+		}
+		return line, col
+	}
+
+	line = 1
+	col = 1
+	for i := 0; i < p.Offset; i++ {
+		if content[i] == '\n' {
+			line++
+			col = 1
+		} else {
+			col++
+		}
+	}
+
+	return line, col
 }
 
 // Interval represents an interval of code that was added during translation
 type Interval struct {
-	// GenStart is the starting line in the generated code
+	// GenStart is the starting byte offset in the generated code
 	GenStart int
 
-	// GenEnd is the ending line in the generated code
+	// GenEnd is the ending byte offset in the generated code
 	GenEnd int
-
-	// GenStartCol is the starting column in the generated code (optional)
-	GenStartCol int
-
-	// GenEndCol is the ending column in the generated code (optional)
-	GenEndCol int
 
 	// SourcePos is the position in the original source code
 	SourcePos Position
@@ -28,50 +56,30 @@ type Interval struct {
 	PredicateSpan *Position
 }
 
-// IsValid checks if the interval is valid (start <= end, positions are positive)
+// IsValid checks if the interval is valid (start <= end, positions are non-negative)
 func (a *Interval) IsValid() bool {
-	if a.GenStart <= 0 || a.GenEnd <= 0 {
+	if a.GenStart < 0 || a.GenEnd < 0 {
 		return false
 	}
 	if a.GenStart > a.GenEnd {
 		return false
 	}
-	if a.GenStart == a.GenEnd && a.GenStartCol > 0 && a.GenEndCol > 0 {
-		if a.GenStartCol > a.GenEndCol {
-			return false
-		}
-	}
 	return true
 }
 
-// Contains checks if a given position (line, col) is within this interval
-func (a *Interval) Contains(line, col int) bool {
-	if line < a.GenStart || line > a.GenEnd {
-		return false
-	}
-
-	// If on the start line, check column
-	if line == a.GenStart && a.GenStartCol > 0 && col < a.GenStartCol {
-		return false
-	}
-
-	// If on the end line, check column
-	if line == a.GenEnd && a.GenEndCol > 0 && col > a.GenEndCol {
-		return false
-	}
-
-	return true
+// Contains checks if a given offset is within this interval
+func (a *Interval) Contains(offset int) bool {
+	return offset >= a.GenStart && offset <= a.GenEnd
 }
 
-// Length returns the length of this interval in lines
+// Length returns the length of this interval in bytes
 func (a *Interval) Length() int {
 	return a.GenEnd - a.GenStart + 1
 }
 
-// PointMapping represents a point-to-point mapping
+// PointMapping represents a point-to-point mapping using byte offsets
 type PointMapping struct {
-	GenLine   int
-	GenColumn int
+	GenOffset int // Offset in the generated code
 	Orig      Position
 }
 

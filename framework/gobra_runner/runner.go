@@ -196,7 +196,7 @@ func writeTempFile(content string) (string, error) {
 		return "", err
 	}
 
-	f, err := os.CreateTemp(tmpDir, "gobra_input_*.go")
+	f, err := os.CreateTemp(tmpDir, "gobra_input_*.gobra")
 	if err != nil {
 		return "", err
 	}

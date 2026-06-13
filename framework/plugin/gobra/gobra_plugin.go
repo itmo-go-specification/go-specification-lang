@@ -96,7 +96,6 @@ func (p *GobraPlugin) Process(astData *data.ASTData) *plugin.PluginResult {
 	verifResult, err := p.runner.RunWithMapping(generated.GobraCode, generated.HybridMapping)
 	if err != nil {
 		result.WithError(fmt.Errorf("verification failed: %w", err))
-		fmt.Printf("Verification error: %v\n", err)
 		return result
 	}
 

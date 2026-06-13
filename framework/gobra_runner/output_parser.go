@@ -1,6 +1,7 @@
 package gobra_runner
 
 import (
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -22,13 +23,19 @@ var (
 		`(?m)^ERROR at '(.+?)'\s*@\s*\((\d+),\s*(\d+)\):\s*(.+)$`,
 	)
 
-	reSuccess = regexp.MustCompile(`(?m)^(?:\[INFO\]\s+)?[Ss]uccessfully verified`)
+	reGobraLogError = regexp.MustCompile(
+		`Error at:\s*<(.+):(\d+):(\d+)>\s*(.+)`,
+	)
+
+	reSuccess = regexp.MustCompile(`(?i)successfully verified`)
 )
 
 func parseGobraOutput(output, genFilePath string) []rawError {
 	var errors []rawError
 
-	for _, pattern := range []*regexp.Regexp{reGobraError, reGobraErrorAlt} {
+	patterns := []*regexp.Regexp{reGobraError, reGobraErrorAlt, reGobraLogError}
+
+	for _, pattern := range patterns {
 		for _, m := range pattern.FindAllStringSubmatch(output, -1) {
 			file := strings.TrimSpace(m[1])
 			line, _ := strconv.Atoi(m[2])
@@ -55,7 +62,10 @@ func parseGobraOutput(output, genFilePath string) []rawError {
 }
 
 func isSameFile(a, b string) bool {
-	return a == b || strings.HasSuffix(a, b) || strings.HasSuffix(b, a)
+	if a == b {
+		return true
+	}
+	return filepath.Base(a) == filepath.Base(b)
 }
 
 func isSuccess(output string) bool {

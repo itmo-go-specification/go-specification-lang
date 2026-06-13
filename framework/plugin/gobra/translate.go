@@ -1,103 +1,248 @@
 package gobra
 
+// Gobra Code Generation with Hybrid Mapping
+//
+// This package provides Gobra code generation with automatic tracking of code additions
+// and their relationships to the original Go source code. The hybrid mapping enables
+// precise error reporting by translating Gobra error positions back to original source locations.
+//
+// Key Features:
+// - Universal automatic tracking via TrackAddition and TrackPredicate methods
+// - Support for multiple predicates at the same source position
+// - Non-overlapping interval validation
+// - Precise point mappings for predicates
+//
+// Usage:
+//   result, err := GenerateGobra(astData, sourceFile)
+//   if err != nil {
+//       return err
+//   }
+//
+//   // Access generated code
+//   gobraCode := result.GobraCode
+//
+//   // Access hybrid mapping for error translation
+//   mapping := result.HybridMapping
+//
+//   // Map Gobra errors back to source
+//   sourcePos, err := mapping.MapError(gobraErrorOffset)
+//
+// Multiple Predicates at Same Source Position:
+// The system correctly handles scenarios where multiple predicates (requires, ensures)
+// are generated at the same source position (e.g., end of a contract):
+//
+//   /*
+//   @
+//   requires x >= 0;      // predicateSpan.Start = 20
+//   ensures res == x + 1; // predicateSpan.Start = 40
+//   */
+//   func AddOne(x int) (res int) { return x + 1 }
+//
+// Each predicate gets:
+// - Separate non-overlapping interval in generated code
+// - Unique predicate span pointing to its source location
+// - Same general source position (end of contract)
+
 import (
+	"fmt"
 	"go/ast"
 	"gpma/framework/data"
+	gobra_runner "gpma/framework/gobra_runner"
 	specir "gpma/framework/gosl/ir"
 	"strings"
 )
 
-type PredicateSpan struct {
-	Start      int
-	End        int
-	SourceSpan specir.Span
+// GobraGenerationResult contains the generated Gobra code and its hybrid mapping
+type GobraGenerationResult struct {
+	GobraCode     string
+	HybridMapping *gobra_runner.HybridMapping
+	SourceFile    string
 }
 
+// GobraGenerator generates Gobra code with automatic tracking of additions
 type GobraGenerator struct {
-	PredicateSpans []PredicateSpan
+	builder       strings.Builder // For building generated code
+	HybridMapping *gobra_runner.HybridMapping
+	currentOffset int // Current position in generated code
+	sourceFile    string
+}
+
+// TrackAddition automatically tracks a code addition by measuring position changes
+// generateFunc: function that generates the code to add
+// sourcePos: position in the original source code
+// predicateSpan: optional precise point mapping for predicates
+func (g *GobraGenerator) TrackAddition(
+	generateFunc func() string,
+	sourcePos gobra_runner.Position,
+	predicateSpan *gobra_runner.Position,
+) (string, error) {
+	// Remember position before generation
+	beforeLen := g.builder.Len()
+
+	// Generate the code and write it to builder
+	generated := generateFunc()
+	g.builder.WriteString(generated)
+
+	// Remember position after generation
+	afterLen := g.builder.Len()
+
+	// Create interval automatically
+	genStart := beforeLen + g.currentOffset
+	genEnd := afterLen + g.currentOffset - 1 // -1 because Len() returns length, not position
+
+	interval := gobra_runner.Interval{
+		GenStart:      genStart,
+		GenEnd:        genEnd,
+		SourcePos:     sourcePos,
+		PredicateSpan: predicateSpan,
+	}
+
+	// Add interval to mapping
+	err := g.HybridMapping.AddInterval(interval)
+	if err != nil {
+		return "", fmt.Errorf("failed to track addition: %w", err)
+	}
+
+	return generated, nil
+}
+
+// TrackPredicate automatically tracks a predicate with point mapping
+// generateFunc: function that generates the predicate code
+// sourceSpan: span of the predicate in source code
+// sourcePos: general position in source code (e.g., end of contract)
+func (g *GobraGenerator) TrackPredicate(
+	generateFunc func() string,
+	sourceSpan specir.Span,
+	sourcePos gobra_runner.Position,
+) (string, error) {
+	predicateSpan := &gobra_runner.Position{
+		File:   sourceSpan.File,
+		Offset: sourceSpan.Start,
+	}
+
+	return g.TrackAddition(generateFunc, sourcePos, predicateSpan)
+}
+
+// WriteString writes a string to the builder and returns its length
+func (g *GobraGenerator) WriteString(s string) int {
+	g.builder.WriteString(s)
+	return len(s)
+}
+
+// WriteByte writes a byte to the builder and returns 1
+func (g *GobraGenerator) WriteByte(b byte) int {
+	g.builder.WriteByte(b)
+	return 1
+}
+
+// CurrentPosition returns the current position in the generated code
+func (g *GobraGenerator) CurrentPosition() int {
+	return g.builder.Len() + g.currentOffset
 }
 
 func (g *GobraGenerator) GenerateGobraFuncContract(funcContract *specir.FuncContract, sourceOffset int) string {
-	var b strings.Builder
+	g.builder.Reset()
+	g.currentOffset = sourceOffset // Update offset for this generation
 
+	sourcePos := gobra_runner.Position{
+		File:   g.sourceFile,
+		Offset: funcContract.Span.End,
+	}
+
+	// Generate requires with automatic tracking
 	for i, requires := range funcContract.Requires {
 		if i > 0 {
-			b.WriteByte('\n')
+			g.builder.WriteByte('\n')
 		}
-		start := b.Len()
-		b.WriteString("requires ")
-		b.WriteString(PrintExpr(requires.Expr))
-		end := b.Len()
-		g.PredicateSpans = append(g.PredicateSpans, PredicateSpan{
-			Start:      start + sourceOffset,
-			End:        end + sourceOffset,
-			SourceSpan: requires.Span,
-		})
+
+		_, err := g.TrackPredicate(
+			func() string {
+				return "requires " + PrintExpr(requires.Expr)
+			},
+			requires.Span,
+			sourcePos,
+		)
+		if err != nil {
+			fmt.Printf("Warning: failed to track requires: %v\n", err)
+		}
 	}
+
+	// Generate ensures with automatic tracking
 	for _, ensures := range funcContract.Ensures {
-		if b.Len() > 0 {
-			b.WriteByte('\n')
+		if g.builder.Len() > 0 {
+			g.builder.WriteByte('\n')
 		}
-		start := b.Len()
-		b.WriteString("ensures ")
-		b.WriteString(PrintExpr(ensures.Expr))
-		end := b.Len()
-		g.PredicateSpans = append(g.PredicateSpans, PredicateSpan{
-			Start:      start + sourceOffset,
-			End:        end + sourceOffset,
-			SourceSpan: ensures.Span,
-		})
+
+		_, err := g.TrackPredicate(
+			func() string {
+				return "ensures " + PrintExpr(ensures.Expr)
+			},
+			ensures.Span,
+			sourcePos,
+		)
+		if err != nil {
+			fmt.Printf("Warning: failed to track ensures: %v\n", err)
+		}
 	}
-	return b.String()
+
+	return g.builder.String()
 }
 
 func (g *GobraGenerator) GenerateGobraLoopSpec(loopSpec *specir.LoopSpec, sourceOffset int) string {
-	var b strings.Builder
+	g.builder.Reset()
+	g.currentOffset = sourceOffset // Update offset for this generation
+
+	sourcePos := gobra_runner.Position{
+		File:   g.sourceFile,
+		Offset: loopSpec.Span.End,
+	}
 
 	for i, invariant := range loopSpec.Invariants {
 		if i > 0 {
-			b.WriteByte('\n')
+			g.builder.WriteByte('\n')
 		}
-		start := b.Len()
-		b.WriteString("invariant ")
-		b.WriteString(PrintExpr(invariant.Expr))
-		end := b.Len()
-		g.PredicateSpans = append(g.PredicateSpans, PredicateSpan{
-			Start:      start + sourceOffset,
-			End:        end + sourceOffset,
-			SourceSpan: invariant.Span,
-		})
+
+		_, err := g.TrackPredicate(
+			func() string {
+				return "invariant " + PrintExpr(invariant.Expr)
+			},
+			invariant.Span,
+			sourcePos,
+		)
+		if err != nil {
+			fmt.Printf("Warning: failed to track invariant: %v\n", err)
+		}
 	}
-	return b.String()
+
+	return g.builder.String()
 }
 
 func (g *GobraGenerator) GenerateGobraAsserts(asserts *specir.AssertSpec, sourceOffset int) string {
-	var b strings.Builder
+	g.builder.Reset()
+	g.currentOffset = sourceOffset // Update offset for this generation
 
-	start := b.Len()
-	b.WriteString("assert ")
-	b.WriteString(PrintExpr(asserts.Assertion.Expr))
-	b.WriteByte(';')
-	end := b.Len()
-	g.PredicateSpans = append(g.PredicateSpans, PredicateSpan{
-		Start:      start + sourceOffset,
-		End:        end + sourceOffset,
-		SourceSpan: asserts.Assertion.Span,
-	})
+	sourcePos := gobra_runner.Position{
+		File:   g.sourceFile,
+		Offset: asserts.Span.End,
+	}
 
-	return b.String()
+	_, err := g.TrackPredicate(
+		func() string {
+			return "assert " + PrintExpr(asserts.Assertion.Expr) + ";"
+		},
+		asserts.Assertion.Span,
+		sourcePos,
+	)
+	if err != nil {
+		fmt.Printf("Warning: failed to track assert: %v\n", err)
+	}
+
+	return g.builder.String()
 }
 
-type GobraArtifacts struct {
-	gobraSource    string
-	predicateSpans []PredicateSpan
-}
-
-func (g *GobraArtifacts) GetGobraSource() string {
-	return g.gobraSource
-}
-
-func GenerateGobra(astData *data.ASTData) (GobraArtifacts, error) {
+// GenerateGobra generates Gobra code from AST data with automatic tracking
+// Returns GobraGenerationResult containing both code and hybrid mapping
+func GenerateGobra(astData *data.ASTData, sourceFile string) (*GobraGenerationResult, error) {
 	type Segment struct {
 		info   *data.AdditionalInfo
 		offset int
@@ -130,7 +275,9 @@ func GenerateGobra(astData *data.ASTData) (GobraArtifacts, error) {
 	})
 
 	g := &GobraGenerator{
-		PredicateSpans: []PredicateSpan{},
+		HybridMapping: gobra_runner.NewHybridMapping(sourceFile),
+		currentOffset: 0,
+		sourceFile:    sourceFile,
 	}
 
 	source := astData.Source
@@ -154,5 +301,9 @@ func GenerateGobra(astData *data.ASTData) (GobraArtifacts, error) {
 		shift = shift + len(section_text) + 1
 	}
 
-	return GobraArtifacts{source, g.PredicateSpans}, nil
+	return &GobraGenerationResult{
+		GobraCode:     source,
+		HybridMapping: g.HybridMapping,
+		SourceFile:    sourceFile,
+	}, nil
 }

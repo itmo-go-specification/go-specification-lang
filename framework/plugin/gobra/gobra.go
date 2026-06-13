@@ -235,18 +235,8 @@ func FindNamedPredicateByStartOffset(data *data.ASTData, offset int) *specir.Nam
 	return nil
 }
 
-// FindPredicateSpanContainingOffset searches for a predicate span that contains the given offset
-func FindPredicateSpanContainingOffset(predicateSpans []PredicateSpan, offset int) (specir.Span, bool) {
-	for _, span := range predicateSpans {
-		if offset >= span.Start && offset < span.End {
-			return span.SourceSpan, true
-		}
-	}
-	return specir.Span{}, false
-}
-
 func RunGobraVerifier(astData *data.ASTData, cfg GobraConfig) ([]specir.NamedPredicate, error) {
-	generated, err := GenerateGobra(astData)
+	generated, err := GenerateGobra(astData, astData.FileSet.File(astData.File.Pos()).Name())
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate gobra: %v", err)
 	}
@@ -254,14 +244,14 @@ func RunGobraVerifier(astData *data.ASTData, cfg GobraConfig) ([]specir.NamedPre
 	// Dump generated Gobra code to file for debugging
 	if cfg.Debug {
 		debugFile := "debug.gobra"
-		if err := os.WriteFile(debugFile, []byte(generated.GetGobraSource()), 0644); err != nil {
+		if err := os.WriteFile(debugFile, []byte(generated.GobraCode), 0644); err != nil {
 			fmt.Printf("[DEBUG] Warning: failed to write debug.gobra: %v\n", err)
 		} else {
 			fmt.Printf("[DEBUG] Generated Gobra code written to %s\n", debugFile)
 		}
 	}
 
-	tmpFile, err := WriteTempFile(generated.GetGobraSource())
+	tmpFile, err := WriteTempFile(generated.GobraCode)
 	if err != nil {
 		return nil, fmt.Errorf("failed to write to /tmp: %v", err)
 	}
@@ -279,38 +269,41 @@ func RunGobraVerifier(astData *data.ASTData, cfg GobraConfig) ([]specir.NamedPre
 
 	failed_predicates := []specir.NamedPredicate{}
 	for _, error_location := range FindErrorLocations(gobraReport) {
-		gobraOffset, err := LineColToOffset(generated.GetGobraSource(), error_location.Line, error_location.Column)
+		gobraOffset, err := LineColToOffset(generated.GobraCode, error_location.Line, error_location.Column)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get error offset: %v", err)
 		}
 
 		// Debug logging
 		if cfg.Debug {
-			gobraLine, gobraCol, _ := OffsetToLineCol(generated.GetGobraSource(), gobraOffset)
+			gobraLine, gobraCol, _ := OffsetToLineCol(generated.GobraCode, gobraOffset)
 			fmt.Printf("[DEBUG] Gobra error at generated position %d:%d (offset %d)\n", gobraLine, gobraCol, gobraOffset)
-			fmt.Printf("[DEBUG] Generated source snippet around error:\n%s\n", getSnippet(generated.GetGobraSource(), gobraOffset, 50))
+			fmt.Printf("[DEBUG] Generated source snippet around error:\n%s\n", getSnippet(generated.GobraCode, gobraOffset, 50))
 
-			// Show available predicate spans
-			fmt.Printf("[DEBUG] Available predicate spans:\n")
-			for _, span := range generated.predicateSpans {
-				fmt.Printf("[DEBUG]   [%d:%d] -> source [%d:%d]\n", span.Start, span.End, span.SourceSpan.Start, span.SourceSpan.End)
+			// Show available intervals
+			fmt.Printf("[DEBUG] Available intervals:\n")
+			for _, interval := range generated.HybridMapping.Additions {
+				fmt.Printf("[DEBUG]   [%d:%d] -> source [%d]\n", interval.GenStart, interval.GenEnd, interval.SourcePos.Offset)
 			}
 		}
 
-		sourceOffset, found := FindPredicateSpanContainingOffset(generated.predicateSpans, gobraOffset)
-		if !found {
+		// Use hybrid mapping to find source position
+		sourcePos, err := generated.HybridMapping.MapError(gobraOffset)
+		if err != nil {
+			return nil, fmt.Errorf("failed to map error: %v", err)
+		}
+
+		sourceOffset := sourcePos.Offset
+
+		predicate := FindNamedPredicateByStartOffset(astData, sourceOffset)
+		if predicate == nil {
 			// Provide useful debugging information
-			gobraLine, gobraCol, err := OffsetToLineCol(generated.GetGobraSource(), gobraOffset)
+			gobraLine, gobraCol, err := OffsetToLineCol(generated.GobraCode, gobraOffset)
 			if err != nil {
 				return nil, fmt.Errorf("failed to get gobra error position: %v", err)
 			}
 
-			return nil, fmt.Errorf("failed to find corresponding predicate for gobra position %d:%d (offset %d)", gobraLine, gobraCol, gobraOffset)
-		}
-
-		predicate := FindNamedPredicateByStartOffset(astData, sourceOffset.Start)
-		if predicate == nil {
-			return nil, fmt.Errorf("failed to find a predicate with given starting offset: %d", sourceOffset.Start)
+			return nil, fmt.Errorf("failed to find corresponding predicate for gobra position %d:%d (offset %d, mapped to source offset %d)", gobraLine, gobraCol, gobraOffset, sourceOffset)
 		}
 
 		failed_predicates = append(failed_predicates, *predicate)

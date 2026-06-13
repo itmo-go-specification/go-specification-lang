@@ -146,6 +146,57 @@ const (
 
 Метод `IsValid()` проверяет корректность значения бэкенда.
 
+## Docker поддержка
+
+### Проверка доступности Docker
+
+Перед использованием Docker бэкенда можно проверить доступность Docker:
+
+```go
+import "gpma/framework/gobra_runner"
+
+checker := gobra_runner.NewDockerChecker(10 * time.Second)
+if err := checker.CheckDockerAvailability(); err != nil {
+    fmt.Printf("Docker недоступен: %v\n", err)
+    return
+}
+```
+
+### Валидация Docker конфигурации
+
+Проверьте конфигурацию перед запуском:
+
+```go
+settings := gobra_runner.DefaultSettings()
+settings.ExecutionBackend = gobra_runner.BackendDocker
+settings.DockerImage = "ghcr.io/viperproject/gobra:latest"
+
+if err := gobra_runner.ValidateDockerConfig(settings); err != nil {
+    fmt.Printf("Неверная Docker конфигурация: %v\n", err)
+    return
+}
+```
+
+### Обработка Docker ошибок
+
+Docker ошибки имеют специальный тип для лучшей диагностики:
+
+```go
+result, err := runner.Run(gobraCode)
+if err != nil {
+    if gobra_runner.IsDockerError(err) {
+        dockerErr := err.(*gobra_runner.DockerError)
+        fmt.Printf("Docker ошибка (контекст: %s): %v\n",
+            dockerErr.Context, dockerErr.Err)
+        fmt.Printf("Образ: %s, команда: %s\n",
+            dockerErr.Image, dockerErr.Command)
+    } else {
+        fmt.Printf("Общая ошибка: %v\n", err)
+    }
+    return
+}
+```
+
 ## Примеры использования
 
 ### Базовое использование с нативным бэкендом

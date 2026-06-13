@@ -116,14 +116,18 @@ func (r *Runner) buildGobraArgs(inputFile string) []string {
 func (r *Runner) buildDockerCommand(ctx context.Context, inputFile string) (*exec.Cmd, error) {
 	s := r.settings
 
-	if s.DockerImage == "" {
-		return nil, fmt.Errorf("DockerImage is not set in Settings")
+	// Validate Docker configuration before building command
+	if err := ValidateDockerConfig(s); err != nil {
+		return nil, NewDockerError(err, s.DockerImage, "build", "validation")
 	}
 
 	// Get absolute path of input file
 	absInputFile, err := filepath.Abs(inputFile)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get absolute path for input file: %w", err)
+		return nil, NewDockerError(
+			fmt.Errorf("failed to get absolute path for input file: %w", err),
+			s.DockerImage, "build", "file path",
+		)
 	}
 
 	// Get directory of input file for volume mounting

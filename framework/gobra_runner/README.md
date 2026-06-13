@@ -103,7 +103,7 @@ r := gobra_runner.New(s)
 Настройки могут быть переопределены через переменные окружения:
 
 - `GPMA_EXECUTION_BACKEND` — бэкенд выполнения: `"native"` или `"docker"` (по умолчанию: `"native"`)
-- `GPMA_DOCKER_IMAGE` — Docker образ для Gobra (по умолчанию: `"ghcr.io/viperproject/gobra:latest"`)
+- `GPMA_DOCKER_IMAGE` — Docker образ для Gobra (по умолчанию: `"ghcr.io/viperproject/gobra:sha-7fa4f86"`)
 - `GPMA_JAVA_PATH` — путь к Java (по умолчанию: `"java"`)
 - `GPMA_GOBRA_JAR` — путь к gobra.jar (по умолчанию: `"gobra.jar"`)
 - `GPMA_GOBRA_BACKEND` — бэкенд Gobra: `"silicon"` или `"carbon"` (по умолчанию: `"silicon"`)
@@ -116,7 +116,7 @@ r := gobra_runner.New(s)
 |------|-----|--------------|----------|
 | **Execution Backend** | | | |
 | `ExecutionBackend` | `Backend` | `BackendNative` | Бэкенд выполнения: `BackendNative` или `BackendDocker` |
-| `DockerImage` | string | `"ghcr.io/viperproject/gobra:latest"` | Docker образ для Gobra |
+| `DockerImage` | string | `"ghcr.io/viperproject/gobra:sha-7fa4f86"` | Docker образ для Gobra |
 | **Native Execution** | | | |
 | `JavaPath` | string | `"java"` | Путь к java |
 | `GobraJAR` | string | `"gobra.jar"` | Путь к gobra.jar |
@@ -169,7 +169,7 @@ if err := checker.CheckDockerAvailability(); err != nil {
 ```go
 settings := gobra_runner.DefaultSettings()
 settings.ExecutionBackend = gobra_runner.BackendDocker
-settings.DockerImage = "ghcr.io/viperproject/gobra:latest"
+settings.DockerImage = "ghcr.io/viperproject/gobra:sha-7fa4f86"
 
 if err := gobra_runner.ValidateDockerConfig(settings); err != nil {
     fmt.Printf("Неверная Docker конфигурация: %v\n", err)
@@ -309,7 +309,7 @@ import (
 func main() {
     settings := gobra_runner.DefaultSettings()
     settings.ExecutionBackend = gobra_runner.BackendDocker
-    settings.DockerImage = "ghcr.io/viperproject/gobra:latest"
+    settings.DockerImage = "ghcr.io/viperproject/gobra:sha-7fa4f86"
     
     runner := gobra_runner.New(settings)
     
@@ -334,7 +334,7 @@ func main() {
 export GPMA_EXECUTION_BACKEND=docker
 
 # Установка Docker образа
-export GPMA_DOCKER_IMAGE=ghcr.io/viperproject/gobra:latest
+export GPMA_DOCKER_IMAGE=ghcr.io/viperproject/gobra:sha-7fa4f86
 
 # Установка пути к Gobra JAR
 export GPMA_GOBRA_JAR=/path/to/gobra.jar

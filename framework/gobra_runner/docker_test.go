@@ -61,7 +61,7 @@ func TestDockerChecker_CheckDockerImage_ValidFormat(t *testing.T) {
 	checker := NewDockerChecker(10 * time.Second)
 
 	testImages := []string{
-		"ghcr.io/viperproject/gobra:latest",
+		"ghcr.io/viperproject/gobra:sha-7fa4f86",
 		"gobra:latest",
 		"my-registry.com/gobra:v1.0",
 		"localhost:5000/gobra:dev",
@@ -130,7 +130,7 @@ func TestValidateDockerConfig_DockerBackend_InvalidImageName(t *testing.T) {
 func TestValidateDockerConfig_DockerBackend_ValidImage(t *testing.T) {
 	settings := Settings{
 		ExecutionBackend: BackendDocker,
-		DockerImage:      "ghcr.io/viperproject/gobra:latest",
+		DockerImage:      "ghcr.io/viperproject/gobra:sha-7fa4f86",
 		Timeout:          10 * time.Second,
 	}
 

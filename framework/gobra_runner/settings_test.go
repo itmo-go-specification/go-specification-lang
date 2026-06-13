@@ -44,8 +44,8 @@ func TestDefaultSettings(t *testing.T) {
 		t.Errorf("DefaultSettings() ExecutionBackend = %v, want %v", settings.ExecutionBackend, BackendNative)
 	}
 
-	if settings.DockerImage != "ghcr.io/viperproject/gobra:latest" {
-		t.Errorf("DefaultSettings() DockerImage = %v, want %v", settings.DockerImage, "ghcr.io/viperproject/gobra:latest")
+	if settings.DockerImage != "ghcr.io/viperproject/gobra:sha-7fa4f86" {
+		t.Errorf("DefaultSettings() DockerImage = %v, want %v", settings.DockerImage, "ghcr.io/viperproject/gobra:sha-7fa4f86")
 	}
 
 	if settings.JavaPath != "java" {

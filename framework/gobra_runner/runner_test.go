@@ -214,7 +214,7 @@ func TestRunner_buildCommand_Docker(t *testing.T) {
 			name: "Docker backend with image",
 			settings: Settings{
 				ExecutionBackend: BackendDocker,
-				DockerImage:      "ghcr.io/viperproject/gobra:latest",
+				DockerImage:      "ghcr.io/viperproject/gobra:sha-7fa4f86",
 				GobraBackend:     "silicon",
 			},
 			expectError: false,

@@ -53,7 +53,7 @@ type Settings struct {
 func DefaultSettings() Settings {
 	settings := Settings{
 		ExecutionBackend: BackendNative,
-		DockerImage:      "ghcr.io/viperproject/gobra:latest",
+		DockerImage:      "ghcr.io/viperproject/gobra:sha-7fa4f86",
 
 		JavaPath: "java",
 		GobraJAR: "gobra.jar",

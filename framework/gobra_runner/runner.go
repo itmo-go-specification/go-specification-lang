@@ -84,7 +84,7 @@ func (r *Runner) buildGobraArgs(inputFile string) []string {
 	s := r.settings
 	var args []string
 
-	args = append(args, "--input", inputFile)
+	args = append(args, "-i", inputFile)
 
 	if s.GobraBackend != "" {
 		args = append(args, "--backend", s.GobraBackend)
@@ -135,14 +135,22 @@ func (r *Runner) buildDockerCommand(ctx context.Context, inputFile string) (*exe
 	inputFileName := filepath.Base(absInputFile)
 
 	// Build Docker command
+	// The Gobra Docker image has entry point "java -Xss128m -jar gobra.jar" which expects
+	// to run from /gobra where gobra.jar is located. We need to:
+	// 1. Override the entry point to use the full path to gobra.jar
+	// 2. Set working directory to /workspace where we mount the input file
+	// 3. Mount the input directory to /workspace
 	args := []string{
 		"run", "--rm",
 		"-v", fmt.Sprintf("%s:/workspace", inputDir),
 		"-w", "/workspace",
+		"--entrypoint", "java",
 		s.DockerImage,
+		"-Xss128m", "-jar", "/gobra/gobra.jar",
 	}
 
 	// Add Gobra arguments (reuse the same logic)
+	// Use relative path since we're setting working directory to /workspace
 	gobraArgs := r.buildGobraArgs(inputFileName)
 	args = append(args, gobraArgs...)
 
@@ -171,7 +179,14 @@ func (r *Runner) buildNativeCommand(ctx context.Context, inputFile string) (*exe
 }
 
 func writeTempFile(content string) (string, error) {
-	f, err := os.CreateTemp("", "gobra_input_*.go")
+	// Create temp file in current directory for Docker compatibility
+	// macOS temp directories don't mount properly into Docker
+	tmpDir := ".gobra_temp"
+	if err := os.MkdirAll(tmpDir, 0755); err != nil {
+		return "", err
+	}
+
+	f, err := os.CreateTemp(tmpDir, "gobra_input_*.go")
 	if err != nil {
 		return "", err
 	}

@@ -60,11 +60,11 @@ func DefaultSettings() Settings {
 		GobraBin: "gobra",
 		Z3Exe:    "z3",
 
-		GobraBackend: "silicon",
+		GobraBackend: "SILICON", // Uppercase for Docker compatibility
 		Timeout:      120 * time.Second,
 		LogLevel:     "ERROR",
 
-		NoInformation:       true,
+		NoInformation:       false, // Disabled - not supported by Docker image
 		ParallelizeBranches: false,
 	}
 

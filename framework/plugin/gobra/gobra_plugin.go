@@ -1,11 +1,13 @@
 package gobra
 
 import (
+	"context"
 	"fmt"
 	"gpma/framework/data"
 	"gpma/framework/gobra_runner"
 	"gpma/framework/plugin"
 	"os"
+	"strings"
 )
 
 func init() {
@@ -92,8 +94,14 @@ func (p *GobraPlugin) Process(astData *data.ASTData) *plugin.PluginResult {
 		}
 	}
 
-	// Run Gobra verification with hybrid mapping
-	verifResult, err := p.runner.RunWithMapping(generated.GobraCode, generated.HybridMapping)
+	// Create verification request with all needed data
+	req := gobra_runner.VerificationRequest{
+		GeneratedCode: generated.GobraCode,
+		Mapping:       generated.HybridMapping,
+	}
+
+	// Run Gobra verification
+	verifResult, err := p.runner.Verify(context.Background(), req)
 	if err != nil {
 		result.WithError(fmt.Errorf("verification failed: %w", err))
 		return result
@@ -107,22 +115,23 @@ func (p *GobraPlugin) Process(astData *data.ASTData) *plugin.PluginResult {
 	// Process verification results
 	if !verifResult.Success {
 		if verifResult.TimedOut {
-			fmt.Println("Verification timed out")
 			result.WithError(fmt.Errorf("verification timed out"))
 		} else if len(verifResult.Errors) > 0 {
-			fmt.Println("Verification failed")
+			var errorMsgs []string
 			for _, gobraError := range verifResult.Errors {
-				if gobraError.IsMapped() {
-					fmt.Printf("\tError at %s:%d:%d: %s\n",
-						gobraError.File, gobraError.Line, gobraError.Column, gobraError.Message)
+				var errMsg string
+				if gobraError.Position.File != "" {
+					// Convert offset to line:column for display
+					line, col, _ := gobra_runner.OffsetToLineCol([]byte(astData.Source), gobraError.Position.Offset)
+					errMsg = fmt.Sprintf("%s:%d:%d: %s", gobraError.Position.File, line, col, gobraError.Message)
 				} else {
-					fmt.Printf("\tError in generated code at %d:%d: %s\n",
-						gobraError.GenLine, gobraError.GenColumn, gobraError.Message)
+					// No position information available
+					errMsg = fmt.Sprintf("%s: %s", sourceFile, gobraError.Message)
 				}
+				errorMsgs = append(errorMsgs, errMsg)
 			}
+			result.WithError(fmt.Errorf("verification failed: %s", strings.Join(errorMsgs, "\n")))
 		}
-	} else {
-		fmt.Println("Verification succeeded")
 	}
 
 	return result

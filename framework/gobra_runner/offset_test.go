@@ -7,13 +7,13 @@ import (
 // TestOffsetBasedMapping tests the core offset-based mapping functionality
 func TestOffsetBasedMapping(t *testing.T) {
 	// Create a simple mapping
-	mapping := NewHybridMapping("test.go")
+	mapping := NewHybridMapping("")
 
 	// Add an interval using offsets (not line/column)
 	err := mapping.AddInterval(Interval{
-		GenStart:  100,                                   // Offset in generated code
-		GenEnd:    200,                                   // Offset in generated code
-		SourcePos: Position{File: "test.go", Offset: 50}, // Offset in original code
+		GenStart:  100,                                         // Offset in generated code
+		GenEnd:    200,                                         // Offset in generated code
+		SourcePos: SourcePosition{File: "test.go", Offset: 50}, // Offset in original code
 	})
 	if err != nil {
 		t.Fatalf("Failed to add interval: %v", err)
@@ -36,8 +36,8 @@ func TestOffsetBasedMapping(t *testing.T) {
 
 	// Test point mapping
 	mapping.AddPointMapping(PointMapping{
-		GenOffset: 150,                                   // Offset in generated code
-		Orig:      Position{File: "test.go", Offset: 75}, // Offset in original code
+		GenOffset: 150,                                         // Offset in generated code
+		Orig:      SourcePosition{File: "test.go", Offset: 75}, // Offset in original code
 	})
 
 	pointMapping := mapping.FindPointMapping(150)
@@ -68,7 +68,7 @@ func TestOffsetBasedMapping(t *testing.T) {
 	t.Logf("Line 5, Column 10 -> Offset %d", offset)
 
 	// Convert offset back to line:col
-	testPos := Position{Offset: offset}
+	testPos := SourcePosition{Offset: offset}
 	line, col := testPos.ToLineCol([]byte(genCode))
 	t.Logf("Offset %d -> Line %d, Column %d", offset, line, col)
 
@@ -96,7 +96,7 @@ func TestPositionToLineCol(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run("", func(t *testing.T) {
-			pos := Position{Offset: tt.offset}
+			pos := SourcePosition{Offset: tt.offset}
 			line, col := pos.ToLineCol(content)
 			if line != tt.wantLine || col != tt.wantCol {
 				t.Errorf("Offset %d: got Line %d, Column %d, want Line %d, Column %d",

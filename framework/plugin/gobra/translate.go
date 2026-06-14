@@ -56,7 +56,6 @@ import (
 type GobraGenerationResult struct {
 	GobraCode     string
 	HybridMapping *gobra_runner.HybridMapping
-	SourceFile    string
 }
 
 // GobraGenerator generates Gobra code with automatic tracking of additions
@@ -73,8 +72,8 @@ type GobraGenerator struct {
 // predicateSpan: optional precise point mapping for predicates
 func (g *GobraGenerator) TrackAddition(
 	generateFunc func() string,
-	sourcePos gobra_runner.Position,
-	predicateSpan *gobra_runner.Position,
+	sourcePos gobra_runner.SourcePosition,
+	predicateSpan *gobra_runner.SourcePosition,
 ) (string, error) {
 	// Remember position before generation
 	beforeLen := g.builder.Len()
@@ -113,9 +112,9 @@ func (g *GobraGenerator) TrackAddition(
 func (g *GobraGenerator) TrackPredicate(
 	generateFunc func() string,
 	sourceSpan specir.Span,
-	sourcePos gobra_runner.Position,
+	sourcePos gobra_runner.SourcePosition,
 ) (string, error) {
-	predicateSpan := &gobra_runner.Position{
+	predicateSpan := &gobra_runner.SourcePosition{
 		File:   sourceSpan.File,
 		Offset: sourceSpan.Start,
 	}
@@ -144,7 +143,7 @@ func (g *GobraGenerator) GenerateGobraFuncContract(funcContract *specir.FuncCont
 	g.builder.Reset()
 	g.currentOffset = sourceOffset // Update offset for this generation
 
-	sourcePos := gobra_runner.Position{
+	sourcePos := gobra_runner.SourcePosition{
 		File:   g.sourceFile,
 		Offset: funcContract.Span.End,
 	}
@@ -192,7 +191,7 @@ func (g *GobraGenerator) GenerateGobraLoopSpec(loopSpec *specir.LoopSpec, source
 	g.builder.Reset()
 	g.currentOffset = sourceOffset // Update offset for this generation
 
-	sourcePos := gobra_runner.Position{
+	sourcePos := gobra_runner.SourcePosition{
 		File:   g.sourceFile,
 		Offset: loopSpec.Span.End,
 	}
@@ -221,7 +220,7 @@ func (g *GobraGenerator) GenerateGobraAsserts(asserts *specir.AssertSpec, source
 	g.builder.Reset()
 	g.currentOffset = sourceOffset // Update offset for this generation
 
-	sourcePos := gobra_runner.Position{
+	sourcePos := gobra_runner.SourcePosition{
 		File:   g.sourceFile,
 		Offset: asserts.Span.End,
 	}
@@ -304,6 +303,5 @@ func GenerateGobra(astData *data.ASTData, sourceFile string) (*GobraGenerationRe
 	return &GobraGenerationResult{
 		GobraCode:     source,
 		HybridMapping: g.HybridMapping,
-		SourceFile:    sourceFile,
 	}, nil
 }

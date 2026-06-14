@@ -48,7 +48,7 @@ func main() {
 	assert(true)
 }
 `,
-			mapping:     NewHybridMapping("test.go"),
+			mapping:     NewHybridMapping(""),
 			expectError: false,
 		},
 		{
@@ -65,7 +65,7 @@ func main() {
 				m.AddInterval(Interval{
 					GenStart:  20, // Offset in generated code
 					GenEnd:    40,
-					SourcePos: Position{File: "test.go", Offset: 10}, // Offset in original code
+					SourcePos: SourcePosition{File: "test.go", Offset: 10}, // Offset in original code
 				})
 				return m
 			}(),
@@ -84,18 +84,22 @@ func main() {
 			runner := New(settings)
 
 			// Run verification
-			result, err := runner.RunWithMapping(tt.gobraCode, tt.mapping)
+			req := VerificationRequest{
+				GeneratedCode: tt.gobraCode,
+				Mapping:       tt.mapping,
+			}
+			result, err := runner.Verify(context.Background(), req)
 
 			// We expect this to fail because echo is not a real Gobra binary
 			// but we're testing the API structure, not actual verification
 			if err != nil && !tt.expectError {
-				t.Logf("RunWithMapping() error = %v (expected for mock command)", err)
+				t.Logf("Verify() error = %v (expected for mock command)", err)
 			}
 
 			if result != nil {
 				// Check that result structure is correct
 				if result.RawOutput == "" {
-					t.Error("RunWithMapping() result.RawOutput should not be empty")
+					t.Error("Verify() result.RawOutput should not be empty")
 				}
 			}
 		})
@@ -130,10 +134,10 @@ func main() {
 			}
 			runner := New(settings)
 
-			result, err := runner.Run(tt.gobraCode)
+			result, err := runner.VerifyWithoutMapping(context.Background(), tt.gobraCode)
 
 			if err != nil && !tt.expectError {
-				t.Logf("Run() error = %v (expected for mock command)", err)
+				t.Logf("VerifyWithoutMapping() error = %v (expected for mock command)", err)
 			}
 
 			if result != nil {
@@ -337,11 +341,11 @@ func TestMapErrorsWithHybrid(t *testing.T) {
 				{genLine: 10, genColumn: 5, message: "assertion failed"},
 			},
 			mapping: func() *HybridMapping {
-				m := NewHybridMapping("test.go")
+				m := NewHybridMapping("")
 				m.AddInterval(Interval{
 					GenStart:  50, // Offset in generated code
 					GenEnd:    150,
-					SourcePos: Position{File: "test.go", Offset: 25}, // Offset in original code
+					SourcePos: SourcePosition{File: "test.go", Offset: 25}, // Offset in original code
 				})
 				return m
 			}(),

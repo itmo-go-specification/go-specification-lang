@@ -104,10 +104,10 @@ func (h *HybridMapping) GetTotalAdditionsBefore(offset int) int {
 
 // MapError maps an error position from generated code to the original source code
 // This works with byte offsets internally
-func (h *HybridMapping) MapError(offset int) (Position, error) {
+func (h *HybridMapping) MapError(offset int) (SourcePosition, error) {
 	// Validate input
 	if offset < 0 {
-		return Position{}, fmt.Errorf("invalid offset: %d", offset)
+		return SourcePosition{}, fmt.Errorf("invalid offset: %d", offset)
 	}
 
 	// Level 1: Check if the error is within an addition interval
@@ -136,7 +136,7 @@ func (h *HybridMapping) MapError(offset int) (Position, error) {
 		originalOffset = 0
 	}
 
-	return Position{
+	return SourcePosition{
 		File:   h.SourceFile,
 		Offset: originalOffset,
 	}, nil
@@ -145,11 +145,11 @@ func (h *HybridMapping) MapError(offset int) (Position, error) {
 // MapErrorLineCol maps an error position from generated code (line, col) to the original source code
 // This is a convenience function that converts line/col to offset, maps it, then converts back
 // This should only be used for final error reporting
-func (h *HybridMapping) MapErrorLineCol(line, col int, genContent []byte) (Position, error) {
-	// Convert line/col to offset
+func (h *HybridMapping) MapErrorLineCol(line, col int, genContent []byte) (SourcePosition, error) {
+	// Convert line/col to offset using OffsetToLineCol in reverse
 	offset, err := LineColToOffset(genContent, line, col)
 	if err != nil {
-		return Position{}, fmt.Errorf("failed to convert line:col to offset: %w", err)
+		return SourcePosition{}, fmt.Errorf("failed to convert line:col to offset: %w", err)
 	}
 
 	// Map the error using offset

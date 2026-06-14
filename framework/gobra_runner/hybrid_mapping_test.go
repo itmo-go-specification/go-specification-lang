@@ -15,7 +15,7 @@ func TestInterval_IsValid(t *testing.T) {
 			interval: Interval{
 				GenStart:  100, // Offset in generated code
 				GenEnd:    200,
-				SourcePos: Position{File: "test.go", Offset: 50}, // Offset in original code
+				SourcePos: SourcePosition{File: "test.go", Offset: 50}, // Offset in original code
 			},
 			want: true,
 		},
@@ -24,7 +24,7 @@ func TestInterval_IsValid(t *testing.T) {
 			interval: Interval{
 				GenStart:  100, // Offset in generated code
 				GenEnd:    100,
-				SourcePos: Position{File: "test.go", Offset: 50}, // Offset in original code
+				SourcePos: SourcePosition{File: "test.go", Offset: 50}, // Offset in original code
 			},
 			want: true,
 		},
@@ -33,7 +33,7 @@ func TestInterval_IsValid(t *testing.T) {
 			interval: Interval{
 				GenStart:  200, // Offset in generated code
 				GenEnd:    100,
-				SourcePos: Position{File: "test.go", Offset: 50}, // Offset in original code
+				SourcePos: SourcePosition{File: "test.go", Offset: 50}, // Offset in original code
 			},
 			want: false,
 		},
@@ -42,7 +42,7 @@ func TestInterval_IsValid(t *testing.T) {
 			interval: Interval{
 				GenStart:  -1,
 				GenEnd:    10,
-				SourcePos: Position{File: "test.go", Offset: 5},
+				SourcePos: SourcePosition{File: "test.go", Offset: 5},
 			},
 			want: false,
 		},
@@ -172,26 +172,23 @@ func TestInterval_Length(t *testing.T) {
 }
 
 func TestHybridMapping_NewHybridMapping(t *testing.T) {
-	mapping := NewHybridMapping("source.go")
+	mapping := NewHybridMapping("")
 
-	if mapping.SourceFile != "source.go" {
-		t.Errorf("NewHybridMapping() SourceFile = %v, want %v", mapping.SourceFile, "source.go")
-	}
 	if len(mapping.Additions) != 0 {
-		t.Errorf("NewHybridMapping() Additions length = %v, want 0", len(mapping.Additions))
+		t.Errorf("NewHybridMapping("") Additions length = %v, want 0", len(mapping.Additions))
 	}
 	if len(mapping.PointMappings) != 0 {
-		t.Errorf("NewHybridMapping() PointMappings length = %v, want 0", len(mapping.PointMappings))
+		t.Errorf("NewHybridMapping("") PointMappings length = %v, want 0", len(mapping.PointMappings))
 	}
 }
 
 func TestHybridMapping_AddInterval(t *testing.T) {
-	mapping := NewHybridMapping("source.go")
+	mapping := NewHybridMapping("")
 
 	interval := Interval{
 		GenStart:  10,
 		GenEnd:    20,
-		SourcePos: Position{File: "source.go", Offset: 5},
+		SourcePos: SourcePosition{File: "source.go", Offset: 5},
 	}
 
 	err := mapping.AddInterval(interval)
@@ -205,12 +202,12 @@ func TestHybridMapping_AddInterval(t *testing.T) {
 }
 
 func TestHybridMapping_AddInterval_Invalid(t *testing.T) {
-	mapping := NewHybridMapping("source.go")
+	mapping := NewHybridMapping("")
 
 	invalidInterval := Interval{
 		GenStart:  20,
 		GenEnd:    10,
-		SourcePos: Position{File: "source.go", Offset: 5},
+		SourcePos: SourcePosition{File: "source.go", Offset: 5},
 	}
 
 	err := mapping.AddInterval(invalidInterval)
@@ -220,18 +217,18 @@ func TestHybridMapping_AddInterval_Invalid(t *testing.T) {
 }
 
 func TestHybridMapping_AddInterval_Overlap(t *testing.T) {
-	mapping := NewHybridMapping("source.go")
+	mapping := NewHybridMapping("")
 
 	interval1 := Interval{
 		GenStart:  10,
 		GenEnd:    20,
-		SourcePos: Position{File: "source.go", Offset: 5},
+		SourcePos: SourcePosition{File: "source.go", Offset: 5},
 	}
 
 	interval2 := Interval{
 		GenStart:  15,
 		GenEnd:    25,
-		SourcePos: Position{File: "source.go", Offset: 10},
+		SourcePos: SourcePosition{File: "source.go", Offset: 10},
 	}
 
 	mapping.AddInterval(interval1)
@@ -243,24 +240,24 @@ func TestHybridMapping_AddInterval_Overlap(t *testing.T) {
 }
 
 func TestHybridMapping_AutoSort(t *testing.T) {
-	mapping := NewHybridMapping("source.go")
+	mapping := NewHybridMapping("")
 
 	mapping.AddInterval(Interval{
 		GenStart:  30,
 		GenEnd:    40,
-		SourcePos: Position{File: "source.go", Offset: 15},
+		SourcePos: SourcePosition{File: "source.go", Offset: 15},
 	})
 
 	mapping.AddInterval(Interval{
 		GenStart:  10,
 		GenEnd:    20,
-		SourcePos: Position{File: "source.go", Offset: 5},
+		SourcePos: SourcePosition{File: "source.go", Offset: 5},
 	})
 
 	mapping.AddInterval(Interval{
 		GenStart:  22,
 		GenEnd:    28,
-		SourcePos: Position{File: "source.go", Offset: 10},
+		SourcePos: SourcePosition{File: "source.go", Offset: 10},
 	})
 
 	// Intervals should be automatically sorted
@@ -280,12 +277,12 @@ func TestHybridMapping_AutoSort(t *testing.T) {
 
 func TestHybridMapping_OverlapDetection(t *testing.T) {
 	t.Run("valid_non_overlapping", func(t *testing.T) {
-		mapping := NewHybridMapping("source.go")
+		mapping := NewHybridMapping("")
 
 		err := mapping.AddInterval(Interval{
 			GenStart:  10,
 			GenEnd:    20,
-			SourcePos: Position{File: "source.go", Offset: 5},
+			SourcePos: SourcePosition{File: "source.go", Offset: 5},
 		})
 		if err != nil {
 			t.Errorf("AddInterval() error = %v", err)
@@ -294,7 +291,7 @@ func TestHybridMapping_OverlapDetection(t *testing.T) {
 		err = mapping.AddInterval(Interval{
 			GenStart:  30,
 			GenEnd:    40,
-			SourcePos: Position{File: "source.go", Offset: 15},
+			SourcePos: SourcePosition{File: "source.go", Offset: 15},
 		})
 		if err != nil {
 			t.Errorf("AddInterval() error = %v", err)
@@ -302,18 +299,18 @@ func TestHybridMapping_OverlapDetection(t *testing.T) {
 	})
 
 	t.Run("overlapping_intervals", func(t *testing.T) {
-		mapping := NewHybridMapping("source.go")
+		mapping := NewHybridMapping("")
 
 		mapping.AddInterval(Interval{
 			GenStart:  10,
 			GenEnd:    20,
-			SourcePos: Position{File: "source.go", Offset: 5},
+			SourcePos: SourcePosition{File: "source.go", Offset: 5},
 		})
 
 		err := mapping.AddInterval(Interval{
 			GenStart:  15,
 			GenEnd:    25,
-			SourcePos: Position{File: "source.go", Offset: 10},
+			SourcePos: SourcePosition{File: "source.go", Offset: 10},
 		})
 
 		if err == nil {
@@ -323,18 +320,18 @@ func TestHybridMapping_OverlapDetection(t *testing.T) {
 }
 
 func TestHybridMapping_FindInterval(t *testing.T) {
-	mapping := NewHybridMapping("source.go")
+	mapping := NewHybridMapping("")
 
 	mapping.AddInterval(Interval{
 		GenStart:  30,
 		GenEnd:    40,
-		SourcePos: Position{File: "source.go", Offset: 15},
+		SourcePos: SourcePosition{File: "source.go", Offset: 15},
 	})
 
 	mapping.AddInterval(Interval{
 		GenStart:  10,
 		GenEnd:    20,
-		SourcePos: Position{File: "source.go", Offset: 5},
+		SourcePos: SourcePosition{File: "source.go", Offset: 5},
 	})
 
 	tests := []struct {
@@ -368,16 +365,16 @@ func TestHybridMapping_FindInterval(t *testing.T) {
 }
 
 func TestHybridMapping_FindPointMapping(t *testing.T) {
-	mapping := NewHybridMapping("source.go")
+	mapping := NewHybridMapping("")
 
 	mapping.AddPointMapping(PointMapping{
-		GenOffset: 200,                                      // Offset in generated code
-		Orig:      Position{File: "source.go", Offset: 100}, // Offset in original code
+		GenOffset: 200,                                            // Offset in generated code
+		Orig:      SourcePosition{File: "source.go", Offset: 100}, // Offset in original code
 	})
 
 	mapping.AddPointMapping(PointMapping{
-		GenOffset: 100,                                     // Offset in generated code
-		Orig:      Position{File: "source.go", Offset: 50}, // Offset in original code
+		GenOffset: 100,                                           // Offset in generated code
+		Orig:      SourcePosition{File: "source.go", Offset: 50}, // Offset in original code
 	})
 
 	tests := []struct {
@@ -410,24 +407,24 @@ func TestHybridMapping_FindPointMapping(t *testing.T) {
 }
 
 func TestHybridMapping_GetTotalAdditionsBefore(t *testing.T) {
-	mapping := NewHybridMapping("source.go")
+	mapping := NewHybridMapping("")
 
 	mapping.AddInterval(Interval{
 		GenStart:  30,
 		GenEnd:    35,
-		SourcePos: Position{File: "source.go", Offset: 15},
+		SourcePos: SourcePosition{File: "source.go", Offset: 15},
 	})
 
 	mapping.AddInterval(Interval{
 		GenStart:  10,
 		GenEnd:    15,
-		SourcePos: Position{File: "source.go", Offset: 5},
+		SourcePos: SourcePosition{File: "source.go", Offset: 5},
 	})
 
 	mapping.AddInterval(Interval{
 		GenStart:  20,
 		GenEnd:    25,
-		SourcePos: Position{File: "source.go", Offset: 10},
+		SourcePos: SourcePosition{File: "source.go", Offset: 10},
 	})
 
 	tests := []struct {
@@ -455,36 +452,36 @@ func TestHybridMapping_MapError(t *testing.T) {
 		name    string
 		mapping *HybridMapping
 		offset  int
-		wantPos Position
+		wantPos SourcePosition
 		wantErr bool
 	}{
 		{
 			name: "error in predicate with point mapping",
 			mapping: func() *HybridMapping {
-				h := NewHybridMapping("source.go")
+				h := NewHybridMapping("")
 				h.AddInterval(Interval{
 					GenStart:  10,
 					GenEnd:    15,
-					SourcePos: Position{File: "source.go", Offset: 5},
+					SourcePos: SourcePosition{File: "source.go", Offset: 5},
 				})
 				h.AddPointMapping(PointMapping{
 					GenOffset: 12,
-					Orig:      Position{File: "source.go", Offset: 5},
+					Orig:      SourcePosition{File: "source.go", Offset: 5},
 				})
 				return h
 			}(),
 			offset:  12,
-			wantPos: Position{File: "source.go", Offset: 5},
+			wantPos: SourcePosition{File: "source.go", Offset: 5},
 		},
 		{
 			name: "error in addition with predicate span",
 			mapping: func() *HybridMapping {
-				h := NewHybridMapping("source.go")
+				h := NewHybridMapping("")
 				h.AddInterval(Interval{
 					GenStart:  10,
 					GenEnd:    15,
-					SourcePos: Position{File: "source.go", Offset: 5},
-					PredicateSpan: &Position{
+					SourcePos: SourcePosition{File: "source.go", Offset: 5},
+					PredicateSpan: &SourcePosition{
 						File:   "source.go",
 						Offset: 20,
 					},
@@ -492,54 +489,54 @@ func TestHybridMapping_MapError(t *testing.T) {
 				return h
 			}(),
 			offset:  12,
-			wantPos: Position{File: "source.go", Offset: 20},
+			wantPos: SourcePosition{File: "source.go", Offset: 20},
 		},
 		{
 			name: "error in addition without point mapping or predicate span",
 			mapping: func() *HybridMapping {
-				h := NewHybridMapping("source.go")
+				h := NewHybridMapping("")
 				h.AddInterval(Interval{
 					GenStart:  10,
 					GenEnd:    15,
-					SourcePos: Position{File: "source.go", Offset: 5},
+					SourcePos: SourcePosition{File: "source.go", Offset: 5},
 				})
 				return h
 			}(),
 			offset:  12,
-			wantPos: Position{File: "source.go", Offset: 5},
+			wantPos: SourcePosition{File: "source.go", Offset: 5},
 		},
 		{
 			name: "error in original code before additions",
 			mapping: func() *HybridMapping {
-				h := NewHybridMapping("source.go")
+				h := NewHybridMapping("")
 				h.AddInterval(Interval{
 					GenStart:  10,
 					GenEnd:    15,
-					SourcePos: Position{File: "source.go", Offset: 5},
+					SourcePos: SourcePosition{File: "source.go", Offset: 5},
 				})
 				return h
 			}(),
 			offset:  5,
-			wantPos: Position{File: "source.go", Offset: 5},
+			wantPos: SourcePosition{Offset: 5},
 		},
 		{
 			name: "error in original code after additions",
 			mapping: func() *HybridMapping {
-				h := NewHybridMapping("source.go")
+				h := NewHybridMapping("")
 				h.AddInterval(Interval{
 					GenStart:  10,
 					GenEnd:    15,
-					SourcePos: Position{File: "source.go", Offset: 5},
+					SourcePos: SourcePosition{File: "source.go", Offset: 5},
 				})
 				return h
 			}(),
 			offset:  20,
-			wantPos: Position{File: "source.go", Offset: 14}, // 20 - 6 (lines in addition: 10-15 inclusive)
+			wantPos: SourcePosition{Offset: 14}, // 20 - 6 (lines in addition: 10-15 inclusive)
 		},
 		{
 			name: "invalid position - negative line",
 			mapping: func() *HybridMapping {
-				return NewHybridMapping("source.go")
+				return NewHybridMapping("")
 			}(),
 			offset:  -1,
 			wantErr: true,
@@ -547,7 +544,7 @@ func TestHybridMapping_MapError(t *testing.T) {
 		{
 			name: "invalid position - negative offset",
 			mapping: func() *HybridMapping {
-				return NewHybridMapping("source.go")
+				return NewHybridMapping("")
 			}(),
 			offset:  -1,
 			wantErr: true,
@@ -555,10 +552,10 @@ func TestHybridMapping_MapError(t *testing.T) {
 		{
 			name: "empty mapping - error in original code",
 			mapping: func() *HybridMapping {
-				return NewHybridMapping("source.go")
+				return NewHybridMapping("")
 			}(),
 			offset:  10,
-			wantPos: Position{File: "source.go", Offset: 10},
+			wantPos: SourcePosition{Offset: 10},
 		},
 	}
 

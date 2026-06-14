@@ -17,22 +17,24 @@ func New(settings Settings) *Runner {
 	return &Runner{settings: settings}
 }
 
-// RunWithMapping runs Gobra verification with hybrid mapping support
-func (r *Runner) RunWithMapping(gobraCode string, mapping *HybridMapping) (*VerificationResult, error) {
-	tmpFile, err := writeTempFile(gobraCode)
+// Verify executes Gobra verification with the provided request
+func (r *Runner) Verify(ctx context.Context, req VerificationRequest) (*VerificationResult, error) {
+	tmpFile, err := writeTempFile(req.GeneratedCode)
 	if err != nil {
 		return nil, fmt.Errorf("gobra_runner: write temp file: %w", err)
 	}
 	defer os.Remove(tmpFile)
 
-	var ctx context.Context
-	var cancel context.CancelFunc
-	if r.settings.Timeout > 0 {
-		ctx, cancel = context.WithTimeout(context.Background(), r.settings.Timeout)
-	} else {
-		ctx, cancel = context.WithCancel(context.Background())
+	// Use provided context or create default one
+	if ctx == nil {
+		var cancel context.CancelFunc
+		if r.settings.Timeout > 0 {
+			ctx, cancel = context.WithTimeout(context.Background(), r.settings.Timeout)
+		} else {
+			ctx, cancel = context.WithCancel(context.Background())
+		}
+		defer cancel()
 	}
-	defer cancel()
 
 	cmd, err := r.buildCommand(ctx, tmpFile)
 	if err != nil {
@@ -44,7 +46,13 @@ func (r *Runner) RunWithMapping(gobraCode string, mapping *HybridMapping) (*Veri
 
 	output := string(rawOut)
 	rawErrors := parseGobraOutput(output, tmpFile)
-	mappedErrors := mapErrorsWithHybrid(rawErrors, mapping, gobraCode)
+
+	// Use ErrorMapper for mapping errors
+	mapper := NewErrorMapper(req.Mapping, req.GeneratedCode)
+	mappedErrors := make([]VerificationError, 0, len(rawErrors))
+	for _, re := range rawErrors {
+		mappedErrors = append(mappedErrors, mapper.MapError(re))
+	}
 
 	exitOK := runErr == nil
 	hasVerifErrors := len(mappedErrors) > 0
@@ -63,9 +71,12 @@ func (r *Runner) RunWithMapping(gobraCode string, mapping *HybridMapping) (*Veri
 	}, nil
 }
 
-// Run runs Gobra verification without mapping (legacy method for backward compatibility)
-func (r *Runner) Run(gobraCode string) (*VerificationResult, error) {
-	return r.RunWithMapping(gobraCode, nil)
+// VerifyWithoutMapping is a convenience method for simple cases without mapping
+func (r *Runner) VerifyWithoutMapping(ctx context.Context, gobraCode string) (*VerificationResult, error) {
+	return r.Verify(ctx, VerificationRequest{
+		GeneratedCode: gobraCode,
+		Mapping:       nil,
+	})
 }
 
 func (r *Runner) buildCommand(ctx context.Context, inputFile string) (*exec.Cmd, error) {
@@ -162,8 +173,6 @@ func (r *Runner) buildDockerCommand(ctx context.Context, inputFile string) (*exe
 	gobraArgs := r.buildGobraArgs(containerPath)
 	args = append(args, gobraArgs...)
 
-	fmt.Printf("[DEBUG] Running %v\n", args)
-
 	cmd := exec.CommandContext(ctx, "docker", args...)
 	return cmd, nil
 }
@@ -210,22 +219,16 @@ func writeTempFile(content string) (string, error) {
 }
 
 // mapErrorsWithHybrid maps errors using the hybrid mapping system
+// Deprecated: Use ErrorMapper instead
 func mapErrorsWithHybrid(raw []rawError, mapping *HybridMapping, genCode string) []VerificationError {
+	// This function is kept for backward compatibility during transition
+	// Use ErrorMapper for new code
 	result := make([]VerificationError, 0, len(raw))
 	genContent := []byte(genCode)
 
-	// Read original source file content for line/column conversion
-	var sourceContent []byte
-	if mapping != nil && mapping.SourceFile != "" {
-		sourceContent, _ = os.ReadFile(mapping.SourceFile)
-	}
-
 	for _, re := range raw {
 		ve := VerificationError{
-			GenLine:   re.genLine,
-			GenColumn: re.genColumn,
-			GenFile:   re.genFile,
-			Message:   re.message,
+			Message: re.message,
 		}
 
 		// Try to map using hybrid mapping
@@ -233,24 +236,7 @@ func mapErrorsWithHybrid(raw []rawError, mapping *HybridMapping, genCode string)
 			// Convert line:col to offset for internal processing
 			pos, err := mapping.MapErrorLineCol(re.genLine, re.genColumn, genContent)
 			if err == nil {
-				ve.File = pos.File
-				ve.Offset = pos.Offset
-
-				// Convert offset back to line:col for final error reporting
-				// IMPORTANT: Use source content, not generated content!
-				if len(sourceContent) > 0 {
-					ve.Line, ve.Column = pos.ToLineCol(sourceContent)
-				} else {
-					// Fallback: if we can't read source file, use generated content
-					// This won't be accurate but prevents crashes
-					ve.Line, ve.Column = pos.ToLineCol(genContent)
-				}
-			} else {
-				// Mapping failed - add metadata to help with debugging
-				ve.MappingInfo = &ErrorMappingInfo{
-					MappingType: MappingTypeUnmapped,
-					Confidence:  0.0,
-				}
+				ve.Position = pos
 			}
 		}
 

@@ -1,4 +1,4 @@
-package failure
+package success
 
 /*
 @
@@ -7,6 +7,6 @@ ensures res == x + 1;
 assigns \nothing;
 */
 func AddOneNegativeSimple(x int) (res int) {
-	/*@ assert x >= 0; */ // FAILS: x can be negative
+	/*@ assert x >= 0; */
 	return x + 1
 }

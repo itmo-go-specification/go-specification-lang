@@ -9,11 +9,11 @@ ensures \result >= min;
 ensures \result <= max;
 */
 func clamp(x int, min int, max int) int {
-	checks.CheckAt(min <= max, "../../../samples/projects/clamp_both/clamp.go", 4, "precondition")
+	checks.CheckAt(min <= max, "../../../samples/projects/clamp_both/clamp.go", 5, "precondition")
 	var __result_0 int
-	defer checks.CheckAt(__result_0 >= min, "../../../samples/projects/clamp_both/clamp.go", 5, "postcondition")
-	defer checks.CheckAt(__result_0 <= max, "../../../samples/projects/clamp_both/clamp.go", 6, "postcondition")
-	checks.CheckAt(min <= max, "../../../samples/projects/clamp_both/clamp.go", 9, "assertion")
+	defer checks.CheckAt(__result_0 >= min, "../../../samples/projects/clamp_both/clamp.go", 6, "postcondition")
+	defer checks.CheckAt(__result_0 <= max, "../../../samples/projects/clamp_both/clamp.go", 7, "postcondition")
+	checks.CheckAt(min <= max, "../../../samples/projects/clamp_both/clamp.go", 10, "assertion")
 
 	if x < min {
 		{
@@ -21,7 +21,7 @@ func clamp(x int, min int, max int) int {
 			return __result_0
 		}
 	}
-	checks.CheckAt(x >= min, "../../../samples/projects/clamp_both/clamp.go", 15, "assertion")
+	checks.CheckAt(x >= min, "../../../samples/projects/clamp_both/clamp.go", 16, "assertion")
 
 	if x > max {
 		{
@@ -29,7 +29,7 @@ func clamp(x int, min int, max int) int {
 			return __result_0
 		}
 	}
-	checks.CheckAt(x >= min && x <= max, "../../../samples/projects/clamp_both/clamp.go", 21, "assertion")
+	checks.CheckAt(x >= min && x <= max, "../../../samples/projects/clamp_both/clamp.go", 22, "assertion")
 	{
 		__result_0 = x
 		return __result_0

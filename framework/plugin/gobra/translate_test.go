@@ -41,22 +41,22 @@ func PrintAllNamedPredicates(data *data.ASTData, fileContent string) {
 		}
 		if fc := info.FuncContract; fc != nil {
 			for _, np := range fc.Requires {
-				line, col, _ := OffsetToLineCol(fileContent, np.Span.Start)
+				line, col, _ := gobra_runner.OffsetToLineCol([]byte(fileContent), np.Span.Start)
 				entries = append(entries, entry{line, col, np.Label, np.Expr})
 			}
 			for _, np := range fc.Ensures {
-				line, col, _ := OffsetToLineCol(fileContent, np.Span.Start)
+				line, col, _ := gobra_runner.OffsetToLineCol([]byte(fileContent), np.Span.Start)
 				entries = append(entries, entry{line, col, np.Label, np.Expr})
 			}
 		}
 		if ls := info.LoopSpec; ls != nil {
 			for _, np := range ls.Invariants {
-				line, col, _ := OffsetToLineCol(fileContent, np.Span.Start)
+				line, col, _ := gobra_runner.OffsetToLineCol([]byte(fileContent), np.Span.Start)
 				entries = append(entries, entry{line, col, np.Label, np.Expr})
 			}
 		}
 		if as := info.Asserts; as != nil {
-			line, col, _ := OffsetToLineCol(fileContent, as.Assertion.Span.Start)
+			line, col, _ := gobra_runner.OffsetToLineCol([]byte(fileContent), as.Assertion.Span.Start)
 			entries = append(entries, entry{line, col, as.Assertion.Label, as.Assertion.Expr})
 		}
 	}
@@ -99,9 +99,9 @@ func TestHybridMappingGeneration(t *testing.T) {
 		t.Fatal("expected hybrid mapping to be created")
 	}
 
-	// Check that source file is set
-	if result.SourceFile != filepath {
-		t.Errorf("expected source file %s, got %s", filepath, result.SourceFile)
+	// Check that source file is set in hybrid mapping
+	if result.HybridMapping.SourceFile != filepath {
+		t.Errorf("expected source file %s, got %s", filepath, result.HybridMapping.SourceFile)
 	}
 
 	// Check that additions are tracked

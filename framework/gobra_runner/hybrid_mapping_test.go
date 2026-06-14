@@ -175,10 +175,10 @@ func TestHybridMapping_NewHybridMapping(t *testing.T) {
 	mapping := NewHybridMapping("")
 
 	if len(mapping.Additions) != 0 {
-		t.Errorf("NewHybridMapping("") Additions length = %v, want 0", len(mapping.Additions))
+		t.Errorf("NewHybridMapping() Additions length = %v, want 0", len(mapping.Additions))
 	}
 	if len(mapping.PointMappings) != 0 {
-		t.Errorf("NewHybridMapping("") PointMappings length = %v, want 0", len(mapping.PointMappings))
+		t.Errorf("NewHybridMapping() PointMappings length = %v, want 0", len(mapping.PointMappings))
 	}
 }
 

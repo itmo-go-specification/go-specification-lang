@@ -10,8 +10,8 @@ ensures \result >= 0;
 */
 func Abs(x int) int {
 	var __result_0 int
-	defer checks.CheckAt(__result_0 == x || __result_0 == -x, "../../../samples/projects/abs/abs.go", 5, "postcondition")
-	defer checks.CheckAt(__result_0 >= 0, "../../../samples/projects/abs/abs.go", 6, "postcondition")
+	defer checks.CheckAt(__result_0 == x || __result_0 == -x, "../../../samples/projects/abs/abs.go", 6, "postcondition")
+	defer checks.CheckAt(__result_0 >= 0, "../../../samples/projects/abs/abs.go", 7, "postcondition")
 	if x < 0 {
 		{
 			__result_0 = -x

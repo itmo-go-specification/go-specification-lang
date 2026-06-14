@@ -8,14 +8,14 @@ ensures \result >= 0;
 */
 func absDiff(a, b int) int {
 	var __result_0 int
-	defer checks.CheckAt(__result_0 >= 0, "../../../samples/projects/absDiff/abs_diff.go", 4, "postcondition")
+	defer checks.CheckAt(__result_0 >= 0, "../../../samples/projects/absDiff/abs_diff.go", 5, "postcondition")
 	d := a - b
-	checks.CheckAt(d >= 0 || -d >= 0, "../../../samples/projects/absDiff/abs_diff.go", 9, "assertion")
+	checks.CheckAt(d >= 0 || -d >= 0, "../../../samples/projects/absDiff/abs_diff.go", 10, "assertion")
 
 	if d < 0 {
 		d = -d
 	}
-	checks.CheckAt(d >= 0, "../../../samples/projects/absDiff/abs_diff.go", 14, "assertion")
+	checks.CheckAt(d >= 0, "../../../samples/projects/absDiff/abs_diff.go", 15, "assertion")
 	{
 		__result_0 = d
 		return __result_0

@@ -10,7 +10,76 @@ This file provides guidance to agents when working with code in this repository.
 - **Build Docker package**: `just build-deb` (builds .deb package with cross-platform support)
 - **Build Docker container**: `just docker-gpma-runtime` (builds Docker image with GPMA installed)
 
-## Docker Testing
+## Gobra Plugin
+
+The Gobra plugin provides formal verification of Go code using the Gobra verifier (based on Viper infrastructure). It translates Go code with GPMA specifications to Gobra language and runs verification.
+
+### Plugin Configuration
+
+The Gobra plugin supports the following configuration parameters:
+
+- **backend**: Execution backend - `"native"` or `"docker"` (default: `"native"`)
+- **java**: Path to Java executable (default: `"java"`)
+- **gobra_jar**: Path to Gobra JAR file (default: `"gobra.jar"`)
+- **z3_exe**: Path to Z3 executable (default: `"z3"`)
+- **docker_image**: Docker image for Gobra (default: `"ghcr.io/viperproject/gobra:sha-7fa4f86"`)
+- **debug**: Enable debug mode to see generated Gobra code and analyzer output (default: `false`)
+
+### Usage Examples
+
+```bash
+# Basic verification with Docker backend (recommended for local development)
+cd framework && ./build/framework file --plugin gobra --plugin-config gobra:backend:docker ../gobra-demo/success/contracts.go
+
+# Verification with debug mode
+cd framework && ./build/framework file --plugin gobra --plugin-config gobra:debug:true ../gobra-demo/success/asserts.go
+
+# Verification with native backend
+cd framework && ./build/framework file --plugin gobra --plugin-config gobra:backend:native ../gobra-demo/success/contracts.go
+```
+
+### Environment Variables
+
+Gobra plugin settings can be overridden via environment variables:
+
+- `GPMA_EXECUTION_BACKEND`: Execution backend (`"native"` or `"docker"`)
+- `GPMA_DOCKER_IMAGE`: Docker image for Gobra
+- `GPMA_JAVA_PATH`: Path to Java executable
+- `GPMA_GOBRA_JAR`: Path to Gobra JAR file
+- `GPMA_GOBRA_BACKEND`: Gobra backend (`"silicon"` or `"carbon"`)
+- `GPMA_TIMEOUT`: Verification timeout (default: `"120s"`)
+- `GPMA_LOG_LEVEL`: Gobra log level (default: `"ERROR"`)
+
+### Gobra Demo Examples
+
+Working examples are located in the `gobra-demo/` directory:
+
+- **success/**: Examples with correct specifications that pass verification
+  - `contracts.go`: Function contracts (preconditions/postconditions)
+  - `asserts.go`: Assertions within function bodies
+  - `assert_requires.go`: Combined assertions and preconditions
+
+- **failure/**: Examples with incorrect specifications that fail verification
+  - `asserts.go`: Incorrect assertions
+  - `ensures.go`: Incorrect postconditions
+  - `requires.go`: Violated preconditions
+
+### Error Reporting
+
+The Gobra plugin provides precise error reporting with source code locations:
+
+- Errors are mapped from generated Gobra code back to original Go source positions
+- Error format: `file:line:column: error message`
+- Error types include: precondition violations, postcondition violations, assertion failures, invariant violations
+
+### Debug Mode
+
+Enable debug mode to see:
+- Generated Gobra code (written to `debug.gobra`)
+- Raw Gobra analyzer output
+- Detailed verification process information
+
+### Docker Testing
 
 - **Local testing (recommended)**: Use Docker backend for local development on macOS/Apple Silicon
   ```bash

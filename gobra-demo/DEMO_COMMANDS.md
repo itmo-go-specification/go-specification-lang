@@ -25,6 +25,15 @@ cd framework && ./build/framework file --plugin gobra --plugin-config gobra:back
 
 **Expected Result:** `Verification succeed`
 
+## Success Examples - Predicates
+
+```bash
+# Verify all functions using custom predicates
+cd framework && ./build/framework file --plugin gobra --plugin-config gobra:backend:docker ../gobra-demo/success/predicates.go
+```
+
+**Expected Result:** `Verification succeed`
+
 ## Failure Examples - Assertions
 
 ```bash
@@ -110,4 +119,17 @@ Verification failed
 		x >= 0
 	Error: precondition might not hold
 		x <= 100
+```
+
+## Failure Examples - Predicates
+
+```bash
+# Verify functions using custom predicates
+cd framework && ./build/framework file --plugin gobra --plugin-config gobra:backend:docker ../gobra-demo/failure/predicates.go
+```
+
+**Expected Result:**
+```
+[gobra] ../gobra-demo/failure/predicates.go:12:9: error: Postcondition might not hold.
+[gobra] ../gobra-demo/failure/predicates.go:20:8: error: Precondition of call WrongInc(-1) might not hold.
 ```

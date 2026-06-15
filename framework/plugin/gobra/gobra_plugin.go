@@ -121,13 +121,13 @@ func (p *GobraPlugin) Process(astData *data.ASTData) *plugin.PluginResult {
 
 	// Generate Gobra code with hybrid mapping
 	sourceFile := astData.FileSet.File(astData.File.Pos()).Name()
-	generated, err := p.generateGobraCode(astData, sourceFile)
+	generated, err := p.GenerateGobraCode(astData, sourceFile)
 	if err != nil {
 		return result.WithFatalError(fmt.Errorf("failed to generate gobra code: %w", err))
 	}
 
 	// Run verification
-	verifResult, err := p.runVerification(generated)
+	verifResult, err := p.RunVerification(generated)
 	if err != nil {
 		return result.WithFatalError(fmt.Errorf("verification failed: %w", err))
 	}
@@ -139,7 +139,7 @@ func (p *GobraPlugin) Process(astData *data.ASTData) *plugin.PluginResult {
 }
 
 // generateGobraCode generates Gobra code from AST
-func (p *GobraPlugin) generateGobraCode(astData *data.ASTData, sourceFile string) (*GobraGenerationResult, error) {
+func (p *GobraPlugin) GenerateGobraCode(astData *data.ASTData, sourceFile string) (*GobraGenerationResult, error) {
 	generated, err := GenerateGobra(astData, sourceFile)
 	if err != nil {
 		return nil, err
@@ -159,7 +159,7 @@ func (p *GobraPlugin) generateGobraCode(astData *data.ASTData, sourceFile string
 }
 
 // runVerification executes Gobra verification
-func (p *GobraPlugin) runVerification(generated *GobraGenerationResult) (*gobra_runner.VerificationResult, error) {
+func (p *GobraPlugin) RunVerification(generated *GobraGenerationResult) (*gobra_runner.VerificationResult, error) {
 	req := gobra_runner.VerificationRequest{
 		GeneratedCode: generated.GobraCode,
 		Mapping:       generated.HybridMapping,

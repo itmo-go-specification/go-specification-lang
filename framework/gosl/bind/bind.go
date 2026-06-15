@@ -11,6 +11,8 @@ import (
 func Bind(astData *data.ASTData, spec *specir.SpecModule) (*data.ASTData, error) {
 	var nodes []ast.Node
 
+	astData.Spec = spec
+
 	ast.Inspect(astData.File, func(n ast.Node) bool {
 		if n != nil {
 			nodes = append(nodes, n)

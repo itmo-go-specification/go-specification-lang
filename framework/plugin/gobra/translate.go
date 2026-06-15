@@ -62,6 +62,7 @@ type GobraGenerationResult struct {
 type GobraGenerator struct {
 	builder       strings.Builder // For building generated code
 	HybridMapping *gobra_runner.HybridMapping
+	sourceOffset  int // Current position in source code
 	currentOffset int // Current position in generated code
 	sourceFile    string
 }
@@ -139,13 +140,31 @@ func (g *GobraGenerator) CurrentPosition() int {
 	return g.builder.Len() + g.currentOffset
 }
 
-func (g *GobraGenerator) GenerateGobraFuncContract(funcContract *specir.FuncContract, sourceOffset int) string {
+func (g *GobraGenerator) GenerateGobraFuncContract(node *ast.Node, funcContract *specir.FuncContract, sourceOffset int) string {
 	g.builder.Reset()
 	g.currentOffset = sourceOffset // Update offset for this generation
 
 	sourcePos := gobra_runner.SourcePosition{
 		File:   g.sourceFile,
 		Offset: funcContract.Span.End,
+	}
+
+	funcDecl, ok := (*node).(*ast.FuncDecl)
+	if !ok {
+		panic("Received not function decl node to contract generation")
+	}
+
+	p := &Printer{}
+	if funcDecl.Type.Results != nil && funcDecl.Type.Results.List != nil {
+		for _, field := range funcDecl.Type.Results.List {
+			for i, name := range field.Names {
+				if name == nil {
+					p.resultNames = append(p.resultNames, fmt.Sprintf("__result_%d", i))
+				} else {
+					p.resultNames = append(p.resultNames, name.Name)
+				}
+			}
+		}
 	}
 
 	// Generate requires with automatic tracking
@@ -156,7 +175,9 @@ func (g *GobraGenerator) GenerateGobraFuncContract(funcContract *specir.FuncCont
 
 		_, err := g.TrackPredicate(
 			func() string {
-				return "requires " + PrintExpr(requires.Expr)
+				p.buf.Reset()
+				p.PrintExpr(requires.Expr)
+				return "requires " + p.buf.String()
 			},
 			requires.Span,
 			sourcePos,
@@ -174,7 +195,9 @@ func (g *GobraGenerator) GenerateGobraFuncContract(funcContract *specir.FuncCont
 
 		_, err := g.TrackPredicate(
 			func() string {
-				return "ensures " + PrintExpr(ensures.Expr)
+				p.buf.Reset()
+				p.PrintExpr(ensures.Expr)
+				return "ensures " + p.buf.String()
 			},
 			ensures.Span,
 			sourcePos,
@@ -239,10 +262,33 @@ func (g *GobraGenerator) GenerateGobraAsserts(asserts *specir.AssertSpec, source
 	return g.builder.String()
 }
 
+func (g *GobraGenerator) GenerateGobraPredicate(predicate *specir.LogicDecl, sourceOffset int) string {
+	g.builder.Reset()
+	g.currentOffset = sourceOffset
+
+	g.builder.WriteString("ghost\ndecreases\n")
+	g.builder.WriteString(fmt.Sprintf("pure func %s(", predicate.Name))
+	for i, param := range predicate.Params {
+		if i > 0 {
+			g.builder.WriteString(", ")
+		}
+
+		g.WriteString(param.Name)
+		g.WriteString(" ")
+		g.WriteString(typeExprStr(param.Type))
+	}
+	g.builder.WriteString(") bool {\n\t")
+	g.builder.WriteString("return " + PrintExpr(predicate.Body))
+	g.builder.WriteString("\n}\n")
+
+	return g.builder.String()
+}
+
 // GenerateGobra generates Gobra code from AST data with automatic tracking
 // Returns GobraGenerationResult containing both code and hybrid mapping
 func GenerateGobra(astData *data.ASTData, sourceFile string) (*GobraGenerationResult, error) {
 	type Segment struct {
+		node   *ast.Node
 		info   *data.AdditionalInfo
 		offset int
 	}
@@ -267,7 +313,7 @@ func GenerateGobra(astData *data.ASTData, sourceFile string) (*GobraGenerationRe
 				panic("Empty NpdeInfo")
 			}()
 
-			acsl_segments = append(acsl_segments, Segment{node_info, position})
+			acsl_segments = append(acsl_segments, Segment{&n, node_info, position})
 		}
 
 		return true
@@ -275,33 +321,50 @@ func GenerateGobra(astData *data.ASTData, sourceFile string) (*GobraGenerationRe
 
 	g := &GobraGenerator{
 		HybridMapping: gobra_runner.NewHybridMapping(sourceFile),
+		sourceOffset: 0,
 		currentOffset: 0,
 		sourceFile:    sourceFile,
 	}
 
-	source := astData.Source
+	builder := strings.Builder{}
 
-	shift := 0
 	for _, segment := range acsl_segments {
-		offset := shift + segment.offset
+		if g.sourceOffset < segment.offset {
+			builder.WriteString(astData.Source[g.sourceOffset:segment.offset])
+			builder.WriteString("\n")
+			g.sourceOffset = segment.offset
+		}
 
 		section_text := func() string {
 			if segment.info.FuncContract != nil {
-				return g.GenerateGobraFuncContract(segment.info.FuncContract, offset+1)
+				return g.GenerateGobraFuncContract(segment.node, segment.info.FuncContract, builder.Len())
 			} else if segment.info.LoopSpec != nil {
-				return g.GenerateGobraLoopSpec(segment.info.LoopSpec, offset+1)
+				return g.GenerateGobraLoopSpec(segment.info.LoopSpec, builder.Len())
 			} else if segment.info.Asserts != nil {
-				return g.GenerateGobraAsserts(segment.info.Asserts, offset+1)
+				return g.GenerateGobraAsserts(segment.info.Asserts, builder.Len())
 			}
 			panic("Empty contract")
 		}()
 
-		source = source[:offset] + "\n" + section_text + source[offset:]
-		shift = shift + len(section_text) + 1
+		builder.WriteString(section_text)
+	}
+
+	if g.sourceOffset < len(astData.Source) {
+		builder.WriteString(astData.Source[g.sourceOffset:])
+		builder.WriteString("\n")
+		g.sourceOffset = len(astData.Source)
+	}
+
+	for _, specDecl := range astData.Spec.LogicDecls {
+		if specDecl.Kind == specir.LogicPredicate {
+			builder.WriteString(
+				g.GenerateGobraPredicate(specDecl, builder.Len()),
+			)
+		}
 	}
 
 	return &GobraGenerationResult{
-		GobraCode:     source,
+		GobraCode:     builder.String(),
 		HybridMapping: g.HybridMapping,
 	}, nil
 }

@@ -8,18 +8,19 @@ import (
 
 // PrintExpr returns a human-readable, single-line string for any specir.Expr.
 func PrintExpr(expr specir.Expr) string {
-	p := &printer{}
-	p.printExpr(expr)
+	p := &Printer{}
+	p.PrintExpr(expr)
 	return p.buf.String()
 }
 
-type printer struct {
+type Printer struct {
 	buf strings.Builder
+	resultNames []string
 }
 
-// ── Flat (single-line) printer ────────────────────────────────────────────────
+// ── Flat (single-line) Printer ────────────────────────────────────────────────
 
-func (p *printer) printExpr(expr specir.Expr) {
+func (p *Printer) PrintExpr(expr specir.Expr) {
 	if expr == nil {
 		p.buf.WriteString("<nil>")
 		return
@@ -41,7 +42,7 @@ func (p *printer) printExpr(expr specir.Expr) {
 		p.printResult(e)
 	case *specir.ExprOld:
 		p.buf.WriteString(`old(`)
-		p.printExpr(e.Inner)
+		p.PrintExpr(e.Inner)
 		p.buf.WriteByte(')')
 	case *specir.ExprQuantifier:
 		p.printQuantifier(e)
@@ -50,7 +51,7 @@ func (p *printer) printExpr(expr specir.Expr) {
 	}
 }
 
-func (p *printer) printLiteral(e *specir.ExprLiteral) {
+func (p *Printer) printLiteral(e *specir.ExprLiteral) {
 	switch e.Kind {
 	case specir.LitBool:
 		if e.Bool {
@@ -71,7 +72,7 @@ func (p *printer) printLiteral(e *specir.ExprLiteral) {
 	}
 }
 
-func (p *printer) printUnary(e *specir.ExprUnary) {
+func (p *Printer) printUnary(e *specir.ExprUnary) {
 	p.buf.WriteString(unaryOpStr(e.Op))
 	// Parenthesise the operand when it is itself a binary/conditional/quantifier
 	// to avoid ambiguity (unary binds tighter).
@@ -79,57 +80,65 @@ func (p *printer) printUnary(e *specir.ExprUnary) {
 	if needParen {
 		p.buf.WriteByte('(')
 	}
-	p.printExpr(e.Expr)
+	p.PrintExpr(e.Expr)
 	if needParen {
 		p.buf.WriteByte(')')
 	}
 }
 
-func (p *printer) printBinary(e *specir.ExprBinary) {
+func (p *Printer) printBinary(e *specir.ExprBinary) {
 	if needsLeftParen(e.Op, e.Left) {
 		p.buf.WriteByte('(')
-		p.printExpr(e.Left)
+		p.PrintExpr(e.Left)
 		p.buf.WriteByte(')')
 	} else {
-		p.printExpr(e.Left)
+		p.PrintExpr(e.Left)
 	}
 	fmt.Fprintf(&p.buf, " %s ", binaryOpStr(e.Op))
 	if needsRightParen(e.Op, e.Right) {
 		p.buf.WriteByte('(')
-		p.printExpr(e.Right)
+		p.PrintExpr(e.Right)
 		p.buf.WriteByte(')')
 	} else {
-		p.printExpr(e.Right)
+		p.PrintExpr(e.Right)
 	}
 }
 
-func (p *printer) printCall(e *specir.ExprCall) {
+func (p *Printer) printCall(e *specir.ExprCall) {
 	p.buf.WriteString(e.Name)
 	p.buf.WriteByte('(')
 	for i, arg := range e.Args {
 		if i > 0 {
 			p.buf.WriteString(", ")
 		}
-		p.printExpr(arg)
+		p.PrintExpr(arg)
 	}
 	p.buf.WriteByte(')')
 }
 
-func (p *printer) printConditional(e *specir.ExprConditional) {
+func (p *Printer) printConditional(e *specir.ExprConditional) {
 	p.buf.WriteByte('(')
-	p.printExpr(e.Cond)
+	p.PrintExpr(e.Cond)
 	p.buf.WriteString(" ? ")
-	p.printExpr(e.Then)
+	p.PrintExpr(e.Then)
 	p.buf.WriteString(" : ")
-	p.printExpr(e.Else)
+	p.PrintExpr(e.Else)
 	p.buf.WriteByte(')')
 }
 
-func (p *printer) printResult(e *specir.ExprResult) {
-	panic("Unnamed result is not supported")
+func (p *Printer) printResult(e *specir.ExprResult) {
+	if p.resultNames == nil || len(p.resultNames) <= e.Index {
+		p.buf.WriteString(fmt.Sprintf("__result_%d", e.Index))
+
+		for len(p.resultNames) <= e.Index {
+			p.resultNames = append(p.resultNames, fmt.Sprintf("__result_%d", len(p.resultNames)))
+		}
+	} else {
+		p.buf.WriteString(p.resultNames[e.Index])
+	}
 }
 
-func (p *printer) printQuantifier(e *specir.ExprQuantifier) {
+func (p *Printer) printQuantifier(e *specir.ExprQuantifier) {
 	switch e.Kind {
 	case specir.QuantifierForall:
 		p.buf.WriteString(`forall`)
@@ -146,7 +155,7 @@ func (p *printer) printQuantifier(e *specir.ExprQuantifier) {
 		fmt.Fprintf(&p.buf, "%s: %s", v.Name, typeExprStr(v.Type))
 	}
 	p.buf.WriteString("; ")
-	p.printExpr(e.Body)
+	p.PrintExpr(e.Body)
 }
 
 // ── Operator helpers ──────────────────────────────────────────────────────────
@@ -254,9 +263,9 @@ func needsRightParen(op specir.BinaryOp, right specir.Expr) bool {
 func typeExprStr(t specir.TypeExpr) string {
 	switch t.Kind {
 	case specir.TypeBoolean:
-		return "boolean"
+		return "bool"
 	case specir.TypeInteger:
-		return "integer"
+		return "int"
 	case specir.TypeReal:
 		return "real"
 	case specir.TypeCustom:

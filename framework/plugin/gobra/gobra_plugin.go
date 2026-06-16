@@ -220,6 +220,8 @@ func (p *GobraPlugin) convertSingleError(
 ) *errors.Error {
 	var position errors.Position
 
+	fmt.Printf("convert single error: offset=%d from file %s\n", gobraError.Position.Offset, gobraError.Position.File)
+
 	if gobraError.Position.File != "" {
 		line, col, _ := gobra_runner.OffsetToLineCol([]byte(astData.Source), gobraError.Position.Offset)
 		position = errors.Position{

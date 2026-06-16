@@ -13,20 +13,20 @@ func (h *HybridMapping) AddInterval(interval Interval) error {
 	}
 
 	// Find insertion position using binary search
-	insertPos := sort.Search(len(h.Additions), func(i int) bool {
-		return h.Additions[i].GenStart > interval.GenStart
+	insertPos := sort.Search(len(h.Replacements), func(i int) bool {
+		return h.Replacements[i].GenStart > interval.GenStart
 	})
 
 	// Check for overlaps with adjacent intervals
 	if insertPos > 0 {
-		prev := &h.Additions[insertPos-1]
+		prev := &h.Replacements[insertPos-1]
 		if intervalsOverlap(*prev, interval) {
 			return fmt.Errorf("interval overlaps with previous interval: [%d:%d] and [%d:%d]",
 				prev.GenStart, prev.GenEnd, interval.GenStart, interval.GenEnd)
 		}
 	}
-	if insertPos < len(h.Additions) {
-		next := &h.Additions[insertPos]
+	if insertPos < len(h.Replacements) {
+		next := &h.Replacements[insertPos]
 		if intervalsOverlap(interval, *next) {
 			return fmt.Errorf("interval overlaps with next interval: [%d:%d] and [%d:%d]",
 				interval.GenStart, interval.GenEnd, next.GenStart, next.GenEnd)
@@ -34,9 +34,9 @@ func (h *HybridMapping) AddInterval(interval Interval) error {
 	}
 
 	// Insert at the correct position to maintain sorted order
-	h.Additions = append(h.Additions, Interval{})
-	copy(h.Additions[insertPos+1:], h.Additions[insertPos:])
-	h.Additions[insertPos] = interval
+	h.Replacements = append(h.Replacements, Interval{})
+	copy(h.Replacements[insertPos+1:], h.Replacements[insertPos:])
+	h.Replacements[insertPos] = interval
 
 	return nil
 }
@@ -58,13 +58,13 @@ func (h *HybridMapping) AddPointMapping(mapping PointMapping) {
 // FindInterval finds the addition interval that contains the given offset
 func (h *HybridMapping) FindInterval(offset int) *Interval {
 	// Binary search for the interval
-	idx := sort.Search(len(h.Additions), func(i int) bool {
-		return h.Additions[i].GenStart > offset
+	idx := sort.Search(len(h.Replacements), func(i int) bool {
+		return h.Replacements[i].GenStart > offset
 	})
 
 	// Check the interval before the found position
 	if idx > 0 {
-		interval := &h.Additions[idx-1]
+		interval := &h.Replacements[idx-1]
 		if interval.Contains(offset) {
 			return interval
 		}
@@ -94,11 +94,12 @@ func (h *HybridMapping) FindPointMapping(offset int) *PointMapping {
 // GetTotalAdditionsBefore returns the total number of bytes added before a given offset
 func (h *HybridMapping) GetTotalAdditionsBefore(offset int) int {
 	total := 0
-	for _, interval := range h.Additions {
+	for _, interval := range h.Replacements {
 		if interval.GenEnd < offset {
-			total += interval.Length()
+			total += interval.Delta()
 		}
 	}
+	fmt.Printf("Calc total additions before %d, found %d total\n", offset, total)
 	return total
 }
 
@@ -110,9 +111,15 @@ func (h *HybridMapping) MapError(offset int) (SourcePosition, error) {
 		return SourcePosition{}, fmt.Errorf("invalid offset: %d", offset)
 	}
 
+	for _, in := range h.Replacements {
+		fmt.Printf("Addition interval:%d-%d\n", in.GenStart, in.GenEnd)
+	}
+
 	// Level 1: Check if the error is within an addition interval
 	interval := h.FindInterval(offset)
 	if interval != nil {
+		fmt.Printf("Found interval interval:%d-%d\n", interval.GenStart, interval.GenEnd)
+
 		// Use point mapping if available
 		pointMapping := h.FindPointMapping(offset)
 		if pointMapping != nil {
@@ -133,6 +140,7 @@ func (h *HybridMapping) MapError(offset int) (SourcePosition, error) {
 
 	// Ensure we don't return negative offsets
 	if originalOffset < 0 {
+		panic("impossible negative offset")
 		originalOffset = 0
 	}
 
@@ -151,6 +159,8 @@ func (h *HybridMapping) MapErrorLineCol(line, col int, genContent []byte) (Sourc
 	if err != nil {
 		return SourcePosition{}, fmt.Errorf("failed to convert line:col to offset: %w", err)
 	}
+
+	fmt.Printf("convert %d:%d (offset=%d)\n", line, col, offset)
 
 	// Map the error using offset
 	return h.MapError(offset)

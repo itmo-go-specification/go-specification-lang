@@ -41,6 +41,7 @@ func LineColToOffset(content []byte, line, col int) (int, error) {
 // This is a helper function that can be used when working with file contents
 func OffsetToLineCol(content []byte, offset int) (line, col int, err error) {
 	if offset < 0 || offset > len(content) {
+		fmt.Printf("offset %d out of bounds [0, %d]", offset, len(content))
 		return 0, 0, fmt.Errorf("offset %d out of bounds [0, %d]", offset, len(content))
 	}
 

@@ -11,6 +11,9 @@ type Interval struct {
 	// SourcePos is the position in the original source code
 	SourcePos SourcePosition
 
+	// SourceEnd is the position in the original source code
+	SourceEnd SourcePosition
+
 	// PredicateSpan is an optional precise mapping for predicates
 	PredicateSpan *SourcePosition
 }
@@ -36,6 +39,11 @@ func (a *Interval) Length() int {
 	return a.GenEnd - a.GenStart + 1
 }
 
+// Delta returns the length of the added interval minus the length of the replaced interval
+func (a *Interval) Delta() int {
+	return a.GenEnd - a.GenStart + 1 - (a.SourceEnd.Offset - a.SourcePos.Offset)
+}
+
 // PointMapping represents a point-to-point mapping using byte offsets
 type PointMapping struct {
 	GenOffset int // Offset in the generated code
@@ -45,8 +53,8 @@ type PointMapping struct {
 // HybridMapping is a container for tracking code additions and their mappings
 // Implements SourceMapping interface
 type HybridMapping struct {
-	// Additions is a sorted list of all code additions, sorted by GenStart
-	Additions []Interval
+	// Replacements is a sorted list of all code replacements, sorted by GenStart
+	Replacements []Interval
 
 	// PointMappings contains optional point-to-point mappings
 	PointMappings []PointMapping
@@ -56,7 +64,7 @@ type HybridMapping struct {
 // NewHybridMapping creates a new empty HybridMapping
 func NewHybridMapping(sourceFile string) *HybridMapping {
 	return &HybridMapping{
-		Additions:     make([]Interval, 0),
+		Replacements:     make([]Interval, 0),
 		PointMappings: make([]PointMapping, 0),
 		SourceFile:    sourceFile,
 	}

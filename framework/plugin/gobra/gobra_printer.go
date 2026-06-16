@@ -128,11 +128,7 @@ func (p *Printer) printConditional(e *specir.ExprConditional) {
 
 func (p *Printer) printResult(e *specir.ExprResult) {
 	if p.resultNames == nil || len(p.resultNames) <= e.Index {
-		p.buf.WriteString(fmt.Sprintf("__result_%d", e.Index))
-
-		for len(p.resultNames) <= e.Index {
-			p.resultNames = append(p.resultNames, fmt.Sprintf("__result_%d", len(p.resultNames)))
-		}
+		panic("invalid result index")
 	} else {
 		p.buf.WriteString(p.resultNames[e.Index])
 	}
@@ -152,9 +148,9 @@ func (p *Printer) printQuantifier(e *specir.ExprQuantifier) {
 		if i > 0 {
 			p.buf.WriteString(", ")
 		}
-		fmt.Fprintf(&p.buf, "%s: %s", v.Name, typeExprStr(v.Type))
+		fmt.Fprintf(&p.buf, "%s %s", v.Name, typeExprStr(v.Type))
 	}
-	p.buf.WriteString("; ")
+	p.buf.WriteString(" :: ")
 	p.PrintExpr(e.Body)
 }
 

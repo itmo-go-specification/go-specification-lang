@@ -1,5 +1,7 @@
 package gobra_runner
 
+import "fmt"
+
 // ErrorMapper handles error mapping with source content
 type ErrorMapper struct {
 	mapping SourceMapping
@@ -23,9 +25,13 @@ func (m *ErrorMapper) MapError(raw rawError) VerificationError {
 	// Try to map using hybrid mapping
 	if m.mapping != nil {
 		// Convert line:col to offset for internal processing
+		fmt.Printf("map error at %d:%d\n", raw.genLine, raw.genColumn)
 		pos, err := m.mapping.MapErrorLineCol(raw.genLine, raw.genColumn, m.genCode)
 		if err == nil {
+			fmt.Printf("position %d\n", pos.Offset)
 			ve.Position = pos
+		} else {
+			fmt.Printf("error %s\n", err.Error())
 		}
 	}
 

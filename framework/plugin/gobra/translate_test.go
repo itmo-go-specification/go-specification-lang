@@ -105,14 +105,14 @@ func TestHybridMappingGeneration(t *testing.T) {
 	}
 
 	// Check that additions are tracked
-	if len(result.HybridMapping.Additions) == 0 {
+	if len(result.HybridMapping.Replacements) == 0 {
 		t.Fatal("expected additions to be tracked")
 	}
 
 	// Check that intervals don't overlap
-	for i := 1; i < len(result.HybridMapping.Additions); i++ {
-		prev := result.HybridMapping.Additions[i-1]
-		curr := result.HybridMapping.Additions[i]
+	for i := 1; i < len(result.HybridMapping.Replacements); i++ {
+		prev := result.HybridMapping.Replacements[i-1]
+		curr := result.HybridMapping.Replacements[i]
 
 		if prev.GenEnd >= curr.GenStart {
 			t.Errorf("intervals overlap: [%d:%d] and [%d:%d]",
@@ -121,7 +121,7 @@ func TestHybridMappingGeneration(t *testing.T) {
 	}
 
 	// Check that intervals are valid
-	for _, interval := range result.HybridMapping.Additions {
+	for _, interval := range result.HybridMapping.Replacements {
 		if !interval.IsValid() {
 			t.Errorf("invalid interval: %+v", interval)
 		}
@@ -129,7 +129,7 @@ func TestHybridMappingGeneration(t *testing.T) {
 
 	// Check that predicate spans are set for predicates
 	predicateCount := 0
-	for _, interval := range result.HybridMapping.Additions {
+	for _, interval := range result.HybridMapping.Replacements {
 		if interval.PredicateSpan != nil {
 			predicateCount++
 		}
@@ -165,7 +165,7 @@ func TestMultiplePredicatesSameSourcePos(t *testing.T) {
 
 	// Group intervals by source position
 	sourcePosGroups := make(map[int][]gobra_runner.Interval)
-	for _, interval := range result.HybridMapping.Additions {
+	for _, interval := range result.HybridMapping.Replacements {
 		sourcePos := interval.SourcePos.Offset
 		sourcePosGroups[sourcePos] = append(sourcePosGroups[sourcePos], interval)
 	}
@@ -237,7 +237,7 @@ func TestTranslationToGobra(t *testing.T) {
 	if generated.GobraCode == "" {
 		t.Fatal("expected non-empty gobra source")
 	}
-	if len(generated.HybridMapping.Additions) == 0 {
+	if len(generated.HybridMapping.Replacements) == 0 {
 		t.Fatal("expected hybrid mapping additions")
 	}
 }

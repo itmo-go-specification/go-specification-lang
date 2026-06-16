@@ -174,8 +174,8 @@ func TestInterval_Length(t *testing.T) {
 func TestHybridMapping_NewHybridMapping(t *testing.T) {
 	mapping := NewHybridMapping("")
 
-	if len(mapping.Additions) != 0 {
-		t.Errorf("NewHybridMapping() Additions length = %v, want 0", len(mapping.Additions))
+	if len(mapping.Replacements) != 0 {
+		t.Errorf("NewHybridMapping() Additions length = %v, want 0", len(mapping.Replacements))
 	}
 	if len(mapping.PointMappings) != 0 {
 		t.Errorf("NewHybridMapping() PointMappings length = %v, want 0", len(mapping.PointMappings))
@@ -196,8 +196,8 @@ func TestHybridMapping_AddInterval(t *testing.T) {
 		t.Errorf("AddInterval() error = %v", err)
 	}
 
-	if len(mapping.Additions) != 1 {
-		t.Errorf("AddInterval() Additions length = %v, want 1", len(mapping.Additions))
+	if len(mapping.Replacements) != 1 {
+		t.Errorf("AddInterval() Additions length = %v, want 1", len(mapping.Replacements))
 	}
 }
 
@@ -261,17 +261,17 @@ func TestHybridMapping_AutoSort(t *testing.T) {
 	})
 
 	// Intervals should be automatically sorted
-	if len(mapping.Additions) != 3 {
-		t.Errorf("Expected 3 intervals, got %d", len(mapping.Additions))
+	if len(mapping.Replacements) != 3 {
+		t.Errorf("Expected 3 intervals, got %d", len(mapping.Replacements))
 	}
-	if mapping.Additions[0].GenStart != 10 {
-		t.Errorf("First interval GenStart = %v, want 10", mapping.Additions[0].GenStart)
+	if mapping.Replacements[0].GenStart != 10 {
+		t.Errorf("First interval GenStart = %v, want 10", mapping.Replacements[0].GenStart)
 	}
-	if mapping.Additions[1].GenStart != 22 {
-		t.Errorf("Second interval GenStart = %v, want 22", mapping.Additions[1].GenStart)
+	if mapping.Replacements[1].GenStart != 22 {
+		t.Errorf("Second interval GenStart = %v, want 22", mapping.Replacements[1].GenStart)
 	}
-	if mapping.Additions[2].GenStart != 30 {
-		t.Errorf("Third interval GenStart = %v, want 30", mapping.Additions[2].GenStart)
+	if mapping.Replacements[2].GenStart != 30 {
+		t.Errorf("Third interval GenStart = %v, want 30", mapping.Replacements[2].GenStart)
 	}
 }
 

@@ -11,7 +11,7 @@ type Interval struct {
 	// SourcePos is the position in the original source code
 	SourcePos SourcePosition
 
-	// SourceEnd is the position in the original source code
+	// SourceEnd is the end position in the original source code
 	SourceEnd SourcePosition
 
 	// PredicateSpan is an optional precise mapping for predicates

@@ -99,7 +99,6 @@ func (h *HybridMapping) GetTotalAdditionsBefore(offset int) int {
 			total += interval.Delta()
 		}
 	}
-	fmt.Printf("Calc total additions before %d, found %d total\n", offset, total)
 	return total
 }
 
@@ -111,15 +110,9 @@ func (h *HybridMapping) MapError(offset int) (SourcePosition, error) {
 		return SourcePosition{}, fmt.Errorf("invalid offset: %d", offset)
 	}
 
-	for _, in := range h.Replacements {
-		fmt.Printf("Addition interval:%d-%d\n", in.GenStart, in.GenEnd)
-	}
-
 	// Level 1: Check if the error is within an addition interval
 	interval := h.FindInterval(offset)
 	if interval != nil {
-		fmt.Printf("Found interval interval:%d-%d\n", interval.GenStart, interval.GenEnd)
-
 		// Use point mapping if available
 		pointMapping := h.FindPointMapping(offset)
 		if pointMapping != nil {
@@ -159,8 +152,6 @@ func (h *HybridMapping) MapErrorLineCol(line, col int, genContent []byte) (Sourc
 	if err != nil {
 		return SourcePosition{}, fmt.Errorf("failed to convert line:col to offset: %w", err)
 	}
-
-	fmt.Printf("convert %d:%d (offset=%d)\n", line, col, offset)
 
 	// Map the error using offset
 	return h.MapError(offset)

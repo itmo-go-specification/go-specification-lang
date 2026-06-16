@@ -246,7 +246,6 @@ func mapErrorsWithHybrid(raw []rawError, mapping *HybridMapping, genCode string)
 
 		// Try to map using hybrid mapping
 		if mapping != nil {
-			fmt.Printf("map error at %d:%d\n", re.genLine, re.genColumn)
 			// Convert line:col to offset for internal processing
 			pos, err := mapping.MapErrorLineCol(re.genLine, re.genColumn, genContent)
 			if err == nil {

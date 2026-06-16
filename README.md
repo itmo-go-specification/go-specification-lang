@@ -22,6 +22,87 @@ func Abs(x int) int { ... }
 - (опционально) [gvm](https://github.com/moovweb/gvm) для управления версиями Go
 - (опционально) Java — для перегенерации ANTLR-парсера
 
+## Установка
+
+Готовый дистрибутив включает `gpma` CLI, верификатор [Gobra](https://github.com/viperproject/gobra), Z3 и Boogie.  
+Поддерживается **linux/amd64**. Для запуска программ с overlay (`go run --overlay`) по-прежнему нужен установленный Go toolchain.
+
+### Вариант 1: `.deb`-пакет
+
+**Скачать готовый пакет** — из артефактов GitHub Actions (workflow *Package*, хранение 3 дня) или из релиза, если он опубликован.
+
+**Собрать локально:**
+
+```bash
+just build-deb
+```
+
+**Установить:**
+
+```bash
+sudo apt install ./packaging/dist/gpma_*.deb
+```
+
+Пакет подтянет зависимости: `openjdk-21-jre-headless`, `ca-certificates`.  
+Z3, Boogie и совместимые библиотеки OpenSSL 1.1 для Boogie уже включены в пакет.
+
+После установки доступны:
+
+| Команда | Назначение |
+|---------|------------|
+| `gpma` | CLI фреймворка |
+| `gobra` | обёртка над Gobra verifier |
+
+Проверка:
+
+```bash
+gpma plugins
+gobra -i /usr/share/gpma/examples/smoke.gobra
+```
+
+Пример с плагином `dynamic_checks`:
+
+```bash
+gpma project -p dynamic_checks ./samples/projects/simple/ ./overlays/
+go run --overlay overlays/gpma_overlay.json ./samples/projects/simple/main.go
+```
+
+Переменные для Gobra (пути к JAR, Z3, Boogie) заданы в `/etc/gpma/gobra.env`.  
+Плагин `gobra` также можно настроить через `--plugin-config` (`backend`, `gobra_jar`, `z3_exe`, `boogie_exe`).
+
+### Вариант 2: Docker-образ
+
+Образ на базе Ubuntu 22.04 с установленным `gpma` deb-пакетом.
+
+**Полная сборка** (deb собирается внутри Docker, на хосте ничего кроме Docker не нужно):
+
+```bash
+just docker-gpma
+```
+
+**Быстрая пересборка** (сначала собирается deb на хосте, затем устанавливается в образ):
+
+```bash
+just docker-gpma-runtime
+```
+
+Проверка:
+
+```bash
+docker run --rm gpma:latest plugins
+docker run --rm --entrypoint gobra gpma:latest \
+  -i /usr/share/gpma/examples/smoke.gobra
+```
+
+Обработка проекта с монтированием рабочей директории:
+
+```bash
+docker run --rm -v "$(pwd):/work" -w /work gpma:latest project \
+  -p dynamic_checks /work/samples/projects/simple/ /work/overlays/
+```
+
+Запуск с overlay по-прежнему выполняется на хосте через `go run --overlay`, используя сгенерированный `gpma_overlay.json`.
+
 ## Сборка
 
 ### Через Makefile (рекомендуется)

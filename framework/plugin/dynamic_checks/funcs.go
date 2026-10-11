@@ -109,20 +109,28 @@ func applyContractToFunc(funcDecl *ast.FuncDecl, contract *specir.FuncContract, 
 		condition := conv.Convert(ens.Expr)
 		checkCall := createCheckCall(condition, "postcondition", ens.Label, ens.StartPos)
 
+		// Always wrap in anonymous function so condition is evaluated at defer execution time
+		deferFunc := &ast.FuncLit{
+			Type: &ast.FuncType{Params: &ast.FieldList{}},
+			Body: &ast.BlockStmt{
+				List: []ast.Stmt{
+					&ast.ExprStmt{X: checkCall},
+				},
+			},
+		}
+
 		if strictMode || !hasRequires {
-			newStmts = append(newStmts, &ast.DeferStmt{Call: checkCall})
+			// defer func() { checks.CheckAt(...) }()
+			newStmts = append(newStmts, &ast.DeferStmt{
+				Call: &ast.CallExpr{Fun: deferFunc},
+			})
 		} else {
-			// defer func() { if __preconditions_passed { checks.Check(...) } }()
-			deferFunc := &ast.FuncLit{
-				Type: &ast.FuncType{Params: &ast.FieldList{}},
-				Body: &ast.BlockStmt{
-					List: []ast.Stmt{
-						&ast.IfStmt{
-							Cond: preconditionsPassedVar,
-							Body: &ast.BlockStmt{
-								List: []ast.Stmt{&ast.ExprStmt{X: checkCall}},
-							},
-						},
+			// defer func() { if __preconditions_passed { checks.CheckAt(...) } }()
+			deferFunc.Body.List = []ast.Stmt{
+				&ast.IfStmt{
+					Cond: preconditionsPassedVar,
+					Body: &ast.BlockStmt{
+						List: []ast.Stmt{&ast.ExprStmt{X: checkCall}},
 					},
 				},
 			}

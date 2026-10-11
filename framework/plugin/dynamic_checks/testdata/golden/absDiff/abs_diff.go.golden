@@ -8,7 +8,9 @@ ensures \result >= 0;
 */
 func absDiff(a, b int) int {
 	var __result_0 int
-	defer checks.CheckAt(__result_0 >= 0, "../../../samples/projects/absDiff/abs_diff.go", 5, "postcondition")
+	defer func() {
+		checks.CheckAt(__result_0 >= 0, "../../../samples/projects/absDiff/abs_diff.go", 5, "postcondition")
+	}()
 	d := a - b
 	checks.CheckAt(d >= 0 || -d >= 0, "../../../samples/projects/absDiff/abs_diff.go", 10, "assertion")
 

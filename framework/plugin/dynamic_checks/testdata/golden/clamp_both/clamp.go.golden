@@ -11,8 +11,12 @@ ensures \result <= max;
 func clamp(x int, min int, max int) int {
 	checks.CheckAt(min <= max, "../../../samples/projects/clamp_both/clamp.go", 5, "precondition")
 	var __result_0 int
-	defer checks.CheckAt(__result_0 >= min, "../../../samples/projects/clamp_both/clamp.go", 6, "postcondition")
-	defer checks.CheckAt(__result_0 <= max, "../../../samples/projects/clamp_both/clamp.go", 7, "postcondition")
+	defer func() {
+		checks.CheckAt(__result_0 >= min, "../../../samples/projects/clamp_both/clamp.go", 6, "postcondition")
+	}()
+	defer func() {
+		checks.CheckAt(__result_0 <= max, "../../../samples/projects/clamp_both/clamp.go", 7, "postcondition")
+	}()
 	checks.CheckAt(min <= max, "../../../samples/projects/clamp_both/clamp.go", 10, "assertion")
 
 	if x < min {

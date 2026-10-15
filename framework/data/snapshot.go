@@ -6,6 +6,7 @@ import (
 	"go/parser"
 	"go/printer"
 	"go/token"
+	"slices"
 )
 
 type ASTSnapshot struct {
@@ -26,7 +27,7 @@ func (d *ASTData) CreateSnapshot() (*ASTSnapshot, error) {
 			Data:         make(map[string]interface{}),
 			FuncContract: info.FuncContract,
 			LoopSpec:     info.LoopSpec,
-			Asserts:      info.Asserts,
+			Asserts:      slices.Clone(info.Asserts),
 		}
 
 		nodeInfoCopy[node] = infoCopy
@@ -53,7 +54,7 @@ func (d *ASTData) RestoreFromSnapshot(snapshot *ASTSnapshot) error {
 			Data:         make(map[string]interface{}),
 			FuncContract: info.FuncContract,
 			LoopSpec:     info.LoopSpec,
-			Asserts:      info.Asserts,
+			Asserts:      slices.Clone(info.Asserts),
 		}
 	}
 

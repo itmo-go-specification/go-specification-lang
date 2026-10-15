@@ -434,8 +434,10 @@ func GenerateGobra(astData *data.ASTData, sourceFile string) (*GobraGenerationRe
 				g.GenerateGobraFuncContract(&n, node_info.FuncContract)
 			} else if node_info.LoopSpec != nil {
 				g.GenerateGobraLoopSpec(node_info.LoopSpec)
-			} else if node_info.Asserts != nil {
-				g.GenerateGobraAsserts(node_info.Asserts)
+			} else if len(node_info.Asserts) > 0 {
+				for _, assert := range node_info.Asserts {
+					g.GenerateGobraAsserts(assert)
+				}
 			} else {
 				panic("Empty NodeInfo")
 			}

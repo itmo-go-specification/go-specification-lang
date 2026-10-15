@@ -86,7 +86,7 @@ func Bind(astData *data.ASTData, spec *specir.SpecModule) (*data.ASTData, error)
 		if !exists {
 			astData.NodeInfo[stmt] = data.NewAdditionalInfo()
 		}
-		astData.NodeInfo[stmt].Asserts = assertSection
+		astData.NodeInfo[stmt].Asserts = append(astData.NodeInfo[stmt].Asserts, assertSection)
 	}
 
 	return astData, nil

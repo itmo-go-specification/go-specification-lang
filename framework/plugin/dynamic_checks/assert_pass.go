@@ -18,11 +18,13 @@ func applyAssertPass(astData *data.ASTData) bool {
 
 		newList := make([]ast.Stmt, 0, len(block.List))
 		for _, stmt := range block.List {
-			if info := astData.TryGetNodeInfo(stmt); info != nil && info.Asserts != nil {
-				condition := conv.Convert(info.Asserts.Assertion.Expr)
-				checkStmt := &ast.ExprStmt{X: createCheckCall(condition, "assertion", info.Asserts.Assertion.Label, info.Asserts.StartPos)}
-				newList = append(newList, checkStmt)
-				modified = true
+			if info := astData.TryGetNodeInfo(stmt); info != nil {
+				for _, assert := range info.Asserts {
+					condition := conv.Convert(assert.Assertion.Expr)
+					checkStmt := &ast.ExprStmt{X: createCheckCall(condition, "assertion", assert.Assertion.Label, assert.StartPos)}
+					newList = append(newList, checkStmt)
+					modified = true
+				}
 			}
 			newList = append(newList, stmt)
 		}

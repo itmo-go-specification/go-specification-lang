@@ -55,7 +55,7 @@ func PrintAllNamedPredicates(data *data.ASTData, fileContent string) {
 				entries = append(entries, entry{line, col, np.Label, np.Expr})
 			}
 		}
-		if as := info.Asserts; as != nil {
+		for _, as := range info.Asserts {
 			line, col, _ := gobra_runner.OffsetToLineCol([]byte(fileContent), as.Assertion.Span.Start)
 			entries = append(entries, entry{line, col, as.Assertion.Label, as.Assertion.Expr})
 		}

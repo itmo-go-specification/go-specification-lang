@@ -1,0 +1,5 @@
+# Files used inside Linux containers / .deb packages must keep LF on Windows checkouts.
+*.sh               text eol=lf
+Dockerfile*        text eol=lf
+packaging/**       text eol=lf
+*.bat              text eol=crlf

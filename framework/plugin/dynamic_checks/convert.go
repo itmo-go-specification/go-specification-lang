@@ -112,6 +112,13 @@ func convertExpr(conv exprConverter, expr specir.Expr) ast.Expr {
 			X:  conv.Convert(e.Expr),
 		}
 	case *specir.ExprBinary:
+		if e.Op == specir.OpImplies {
+			return &ast.BinaryExpr{
+				X:  &ast.UnaryExpr{Op: token.NOT, X: conv.Convert(e.Left)},
+				Op: token.LOR,
+				Y:  conv.Convert(e.Right),
+			}
+		}
 		return &ast.BinaryExpr{
 			X:  conv.Convert(e.Left),
 			Op: convertBinaryOp(e.Op),

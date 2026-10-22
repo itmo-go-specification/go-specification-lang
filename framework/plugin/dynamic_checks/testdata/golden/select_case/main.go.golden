@@ -1,0 +1,15 @@
+package main
+
+import checks "gpma/framework/plugin/dynamic_checks/check"
+
+func main() {
+	ch := make(chan int, 1)
+	ch <- 1
+	select {
+	case <-ch:
+		checks.CheckAt(false, "../../../samples/projects/select_case/main.go", 8, "assertion")
+
+		return
+	}
+}
+

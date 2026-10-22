@@ -11,27 +11,39 @@ func applyAssertPass(astData *data.ASTData) bool {
 	conv := &baseConverter{}
 
 	ast.Inspect(astData.File, func(n ast.Node) bool {
-		block, ok := n.(*ast.BlockStmt)
-		if !ok {
-			return true
+		changed := false
+		switch s := n.(type) {
+		case *ast.BlockStmt:
+			s.List, changed = insertAsserts(astData, conv, s.List)
+		case *ast.CaseClause:
+			s.Body, changed = insertAsserts(astData, conv, s.Body)
+		case *ast.CommClause:
+			s.Body, changed = insertAsserts(astData, conv, s.Body)
 		}
 
-		newList := make([]ast.Stmt, 0, len(block.List))
-		for _, stmt := range block.List {
-			if info := astData.TryGetNodeInfo(stmt); info != nil {
-				for _, assert := range info.Asserts {
-					condition := conv.Convert(assert.Assertion.Expr)
-					checkStmt := &ast.ExprStmt{X: createCheckCall(condition, "assertion", assert.Assertion.Label, assert.StartPos)}
-					newList = append(newList, checkStmt)
-					modified = true
-				}
-			}
-			newList = append(newList, stmt)
+		if changed {
+			modified = true
 		}
-		block.List = newList
 
 		return true
 	})
 
 	return modified
+}
+
+func insertAsserts(astData *data.ASTData, conv exprConverter, stmts []ast.Stmt) ([]ast.Stmt, bool) {
+	modified := false
+	newList := make([]ast.Stmt, 0, len(stmts))
+	for _, stmt := range stmts {
+		if info := astData.TryGetNodeInfo(stmt); info != nil {
+			for _, assert := range info.Asserts {
+				condition := conv.Convert(assert.Assertion.Expr)
+				checkStmt := &ast.ExprStmt{X: createCheckCall(condition, "assertion", assert.Assertion.Label, assert.StartPos)}
+				newList = append(newList, checkStmt)
+				modified = true
+			}
+		}
+		newList = append(newList, stmt)
+	}
+	return newList, modified
 }

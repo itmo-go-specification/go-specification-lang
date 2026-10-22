@@ -1,0 +1,11 @@
+package main
+
+import checks "gpma/framework/plugin/dynamic_checks/check"
+
+var x = 0.0000001
+
+func main() {
+	checks.CheckAt(x == 0.0000001, "../../../samples/projects/float_literal/main.go", 6, "assertion")
+
+	return
+}

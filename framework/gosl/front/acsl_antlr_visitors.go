@@ -173,7 +173,7 @@ func (b *ACSLBuilder) VisitBinary_op_term(ctx *acsl.Binary_op_termContext) inter
 	left := b.termToExpr(ctx.Term(0))
 	right := b.termToExpr(ctx.Term(1))
 
-	opText := ctx.Bin_op().GetText()
+	opText := ctx.GetOp().GetText()
 	op := relOpToBinary(opText)
 
 	return &specir.ExprBinary{
@@ -187,23 +187,39 @@ func (b *ACSLBuilder) VisitBinary_op_term(ctx *acsl.Binary_op_termContext) inter
 // a <= b, a == b, ...
 func (b *ACSLBuilder) VisitComparison_pred(ctx *acsl.Comparison_predContext) interface{} {
 	log.Debug("VisitComparison_pred text:", ctx.GetText())
-	//Term Rel_op Term
+	//Term (Rel_op Term)+
 	terms := ctx.AllTerm()
 	ops := ctx.AllRel_op()
-	if len(terms) < 2 || len(ops) < 1 {
+	if len(terms) < 2 || len(ops) != len(terms)-1 {
 		return &specir.ExprVar{BaseExpr: specir.BaseExpr{Span: b.blockSpan(ctx)}, Name: ctx.GetText()}
 	}
 
-	left := b.termToExpr(terms[0])
-	right := b.termToExpr(terms[1])
-	log.Debugf("VisitComparison_pred l: %T r: %T\n", terms[0], terms[1])
-	op := relOpToBinary(ops[0].GetText())
-	return &specir.ExprBinary{
-		BaseExpr: specir.BaseExpr{Span: b.blockSpan(ctx)},
-		Op:       op,
-		Left:     left,
-		Right:    right,
+	span := specir.BaseExpr{Span: b.blockSpan(ctx)}
+	exprs := make([]specir.Expr, len(terms))
+	for i, t := range terms {
+		exprs[i] = b.termToExpr(t)
 	}
+
+	var result specir.Expr
+	for i, op := range ops {
+		cmp := &specir.ExprBinary{
+			BaseExpr: span,
+			Op:       relOpToBinary(op.GetText()),
+			Left:     exprs[i],
+			Right:    exprs[i+1],
+		}
+		if result == nil {
+			result = cmp
+			continue
+		}
+		result = &specir.ExprBinary{
+			BaseExpr: span,
+			Op:       specir.OpAnd,
+			Left:     result,
+			Right:    cmp,
+		}
+	}
+	return result
 }
 
 func relOpToBinary(s string) specir.BinaryOp {

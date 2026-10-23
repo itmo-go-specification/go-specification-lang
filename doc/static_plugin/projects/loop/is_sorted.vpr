@@ -1,0 +1,44 @@
+domain IArray {
+    function slot(a: IArray, i: Int): Ref
+    function len(a: IArray): Int
+    function first(r: Ref): IArray
+    function second(r: Ref): Int
+    
+    axiom all_diff {
+        forall a: IArray, i: Int ::
+            { slot(a, i) } first(slot(a, i)) == a
+            && second(slot(a, i)) == i
+    }
+    
+    axiom len_nonneg {
+        forall a: IArray :: { len(a) } len(a) >= 0
+    }
+}
+
+field val: Int
+
+define access(a) (forall j: Int ::
+    0 <= j && j < len(a) ==> acc(slot(a, j).val))
+
+method isSorted(a: IArray) returns (res: Int)
+  requires access(a)
+  ensures access(a)
+{
+  var i: Int := 0
+  var ok: Int := 1
+
+  while (i + 1 < len(a))
+    invariant access(a)
+    invariant 0 <= i && i <= len(a)
+    decreases len(a) - i
+  {
+    if (slot(a,i).val > slot(a,i+1).val) {
+      ok := 0
+      i := len(a) // break simulation
+    } else {
+      i := i + 1
+    }
+  }
+
+  res := ok
+}

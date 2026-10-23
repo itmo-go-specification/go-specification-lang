@@ -1,0 +1,11 @@
+method abs(x: Int) returns (res: Int)
+    requires true
+    ensures res == x || res == -x
+    ensures res >= 0
+{
+    if (x < 0) {
+        res := -x
+    } else {
+        res := x
+    }
+}

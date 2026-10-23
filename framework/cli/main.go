@@ -17,12 +17,10 @@ import (
 	_ "gpma/framework/plugin/gobra"
 
 	"github.com/urfave/cli/v2"
-
-	log "github.com/sirupsen/logrus"
 )
 
 func main() {
-	log.SetLevel(log.ErrorLevel)
+	//log.SetLevel(log.ErrorLevel)
 
 	app := &cli.App{
 		Name:  "gpma-cli",

@@ -81,6 +81,11 @@ const (
 	OpXor     // ^^ 13
 	OpImplies // ==> 14
 	// TODO: bitwise operation for go ???
+	OpBitwiseOr  // |
+	OpBitwiseXor // ^
+	OpBitwiseAnd // &
+	OpShiftLeft  // <<
+	OpShiftRight // >>
 )
 
 type ExprBinary struct {

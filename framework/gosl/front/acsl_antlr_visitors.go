@@ -35,16 +35,11 @@ func (b *ACSLBuilder) VisitAcsl_comment(ctx *acsl.Acsl_commentContext) interface
 }
 
 func (b *ACSLBuilder) parseNamedPred(p acsl.IPredContext) specir.NamedPredicate {
-	log.Debugf("parseNamedPred text:%s, type:%T", p.GetText(), p)
-	// default without label
-	np := specir.NamedPredicate{
-		Label: "",
-		Expr:  nil,
-		Span:  b.blockSpan(p), // TODO
-	}
 	if p == nil {
-		return np
+		return specir.NamedPredicate{}
 	}
+	log.Debugf("parseNamedPred text:%s, type:%T", p.GetText(), p)
+	np := specir.NamedPredicate{Label: "", Expr: nil, Span: b.blockSpan(p)}
 
 	// syntactic naming: "bound: <pred>"
 	if sn, ok := p.(*acsl.Syntactic_naming_predContext); ok {
@@ -124,10 +119,10 @@ func unique(xs []string) []string {
 
 // specir.Expr
 func (b *ACSLBuilder) predToExpr(p acsl.IPredContext) specir.Expr {
-	log.Debugf("predToExpr text:%s, type:%T\n", p.GetText(), p)
 	if p == nil {
 		return nil
 	}
+	log.Debugf("predToExpr text:%s, type:%T", p.GetText(), p)
 
 	v := b.Visit(p)
 	if e, ok := v.(specir.Expr); ok {
@@ -167,80 +162,85 @@ func (b *ACSLBuilder) VisitLogical_false_pred(ctx *acsl.Logical_false_predContex
 	}
 }
 
-// binary op
-func (b *ACSLBuilder) VisitBinary_op_term(ctx *acsl.Binary_op_termContext) interface{} {
-	log.Debug("VisitBinary_op_term text:", ctx.GetText())
-	left := b.termToExpr(ctx.Term(0))
-	right := b.termToExpr(ctx.Term(1))
-
-	opText := ctx.Bin_op().GetText()
-	op := relOpToBinary(opText)
-
-	return &specir.ExprBinary{
-		BaseExpr: specir.BaseExpr{Span: b.blockSpan(ctx)},
-		Op:       op,
-		Left:     left,
-		Right:    right,
-	}
-}
-
-// a <= b, a == b, ...
+// Comparison predicates may contain more than one comparison.
+// a < b < c is represented as (a < b) && (b < c).
 func (b *ACSLBuilder) VisitComparison_pred(ctx *acsl.Comparison_predContext) interface{} {
-	log.Debug("VisitComparison_pred text:", ctx.GetText())
-	//Term Rel_op Term
 	terms := ctx.AllTerm()
 	ops := ctx.AllRel_op()
-	if len(terms) < 2 || len(ops) < 1 {
-		return &specir.ExprVar{BaseExpr: specir.BaseExpr{Span: b.blockSpan(ctx)}, Name: ctx.GetText()}
+	if len(terms) < 2 || len(ops) != len(terms)-1 {
+		return b.rawExpr(ctx)
 	}
 
-	left := b.termToExpr(terms[0])
-	right := b.termToExpr(terms[1])
-	log.Debugf("VisitComparison_pred l: %T r: %T\n", terms[0], terms[1])
-	op := relOpToBinary(ops[0].GetText())
-	return &specir.ExprBinary{
-		BaseExpr: specir.BaseExpr{Span: b.blockSpan(ctx)},
-		Op:       op,
-		Left:     left,
-		Right:    right,
+	var result specir.Expr
+	for i := 0; i < len(ops); i++ {
+		op, ok := relOpToBinary(ops[i].GetText())
+		if !ok {
+			return b.rawExpr(ctx)
+		}
+		pair := specir.Expr(&specir.ExprBinary{
+			BaseExpr: specir.BaseExpr{Span: b.blockSpan(ctx)},
+			Op:       op,
+			Left:     b.termToExpr(terms[i]),
+			Right:    b.termToExpr(terms[i+1]),
+		})
+		if result == nil {
+			result = pair
+		} else {
+			result = &specir.ExprBinary{
+				BaseExpr: specir.BaseExpr{Span: b.blockSpan(ctx)},
+				Op:       specir.OpAnd,
+				Left:     result,
+				Right:    pair,
+			}
+		}
 	}
+	return result
 }
 
-func relOpToBinary(s string) specir.BinaryOp {
+func relOpToBinary(s string) (specir.BinaryOp, bool) {
 	switch s {
 	case "+":
-		return specir.OpAdd
+		return specir.OpAdd, true
 	case "-":
-		return specir.OpSub
+		return specir.OpSub, true
 	case "*":
-		return specir.OpMul
+		return specir.OpMul, true
 	case "/":
-		return specir.OpDiv
+		return specir.OpDiv, true
 	case "%":
-		return specir.OpMod
+		return specir.OpMod, true
 	case "==":
-		return specir.OpEq
+		return specir.OpEq, true
 	case "!=":
-		return specir.OpNeq
+		return specir.OpNeq, true
 	case "<=":
-		return specir.OpLe
+		return specir.OpLe, true
 	case ">=":
-		return specir.OpGe
+		return specir.OpGe, true
 	case "<":
-		return specir.OpLt
+		return specir.OpLt, true
 	case ">":
-		return specir.OpGt
+		return specir.OpGt, true
 	case "&&":
-		return specir.OpAnd
+		return specir.OpAnd, true
 	case "||":
-		return specir.OpOr
+		return specir.OpOr, true
 	case "^^":
-		return specir.OpXor
+		return specir.OpXor, true
 	case "==>":
-		return specir.OpImplies
+		return specir.OpImplies, true
+	case "|":
+		return specir.OpBitwiseOr, true
+	case "^":
+		return specir.OpBitwiseXor, true
+	case "&":
+		return specir.OpBitwiseAnd, true
+	case "<<":
+		return specir.OpShiftLeft, true
+	case ">>":
+		return specir.OpShiftRight, true
 	default:
-		log.Warnf("relOpToBinary: unknown operator %q, defaulting to OpEq", s)
-		return specir.OpEq
+		return 0, false
 	}
 }
 
@@ -448,38 +448,6 @@ func (b *ACSLBuilder) VisitParentheses_pred(ctx *acsl.Parentheses_predContext) i
 	return b.predToExpr(ctx.Pred())
 }
 
-func (b *ACSLBuilder) VisitUnary_op_term(ctx *acsl.Unary_op_termContext) interface{} {
-	log.Debugf("VisitUnary_op_term text:%s, type:%T\n", ctx.GetText(), ctx.Term())
-	opCtx := ctx.Unary_op()
-	inner := b.termToExpr(ctx.Term())
-
-	var op specir.UnaryOp
-
-	switch opCtx.GetText() {
-	case "!":
-		op = specir.UnaryNot
-
-	case "-":
-		op = specir.UnaryMinus
-
-	case "+":
-		op = specir.UnaryPlus
-
-	default:
-		// fallback
-		return &specir.ExprVar{
-			BaseExpr: specir.BaseExpr{Span: b.blockSpan(ctx)},
-			Name:     ctx.GetText(),
-		}
-	}
-
-	return &specir.ExprUnary{
-		BaseExpr: specir.BaseExpr{Span: b.blockSpan(ctx)},
-		Op:       op,
-		Expr:     inner,
-	}
-}
-
 func (b *ACSLBuilder) VisitLiteral_term(ctx *grammar.Literal_termContext) interface{} {
 	if ctx == nil {
 		return nil
@@ -649,4 +617,263 @@ func (b *ACSLBuilder) variableIdentName(ctx acsl.IVariable_identContext) string 
 		return ids[0]
 	}
 	return ctx.GetText()
+}
+
+// -----------------------------------------------------------------------------
+// Expression visitors for the precedence-based term grammar.
+//
+// Each binary precedence rule is a flat sequence:
+// operand (operator operand)*.
+// Folding the children from left to right preserves the grammar's associativity
+// while the separate visitor methods preserve precedence.
+// -----------------------------------------------------------------------------
+
+func (b *ACSLBuilder) rawExpr(ctx antlr.ParserRuleContext) specir.Expr {
+	if ctx == nil {
+		return nil
+	}
+	return &specir.ExprVar{
+		BaseExpr: specir.BaseExpr{Span: b.blockSpan(ctx)},
+		Name:     ctx.GetText(),
+	}
+}
+
+func (b *ACSLBuilder) visitExprChild(tree antlr.Tree) specir.Expr {
+	if tree == nil {
+		return nil
+	}
+	value, ok := tree.(antlr.ParseTree)
+	if !ok {
+		return nil
+	}
+	v := b.Visit(value)
+	if e, ok := v.(specir.Expr); ok {
+		return e
+	}
+	if np, ok := v.(specir.NamedPredicate); ok {
+		return np.Expr
+	}
+	return nil
+}
+func (b *ACSLBuilder) foldTermPrecedence(ctx antlr.ParserRuleContext) interface{} {
+	if ctx == nil || ctx.GetChildCount() == 0 {
+		return nil
+	}
+
+	var result specir.Expr
+	var pendingOp string
+
+	for i := 0; i < ctx.GetChildCount(); i++ {
+		child := ctx.GetChild(i)
+
+		if terminal, ok := child.(antlr.TerminalNode); ok {
+			pendingOp = terminal.GetText()
+			continue
+		}
+
+		pt, ok := child.(antlr.ParseTree)
+		if !ok || pt == nil {
+			continue
+		}
+
+		rhs := b.visitExprChild(child)
+
+		if rhs == nil {
+			continue
+		}
+
+		if result == nil {
+			result = rhs
+			continue
+		}
+
+		op, ok := relOpToBinary(pendingOp)
+		if !ok {
+			log.Warnf(
+				"Unsupported operator %q in %q",
+				pendingOp, ctx.GetText(),
+			)
+			return b.rawExpr(ctx)
+		}
+
+		result = &specir.ExprBinary{
+			BaseExpr: specir.BaseExpr{Span: b.blockSpan(ctx)},
+			Op:       op,
+			Left:     result,
+			Right:    rhs,
+		}
+
+		pendingOp = ""
+	}
+
+	if result == nil {
+		return b.rawExpr(ctx)
+	}
+
+	return result
+}
+
+func (b *ACSLBuilder) VisitTerm(ctx *acsl.TermContext) interface{} {
+	if ctx == nil || ctx.Conditional_term() == nil {
+		return b.rawExpr(ctx)
+	}
+	return b.Visit(ctx.Conditional_term())
+}
+
+func (b *ACSLBuilder) VisitConditional_term(ctx *acsl.Conditional_termContext) interface{} {
+	if ctx == nil {
+		return nil
+	}
+	if ctx.GetChildCount() < 5 {
+		return b.visitExprChild(ctx.GetChild(0).(antlr.Tree))
+	}
+
+	cond := b.visitExprChild(ctx.GetChild(0).(antlr.Tree))
+	thenExpr := b.visitExprChild(ctx.GetChild(2).(antlr.Tree))
+	elseExpr := b.visitExprChild(ctx.GetChild(4).(antlr.Tree))
+	if cond == nil || thenExpr == nil || elseExpr == nil {
+		return b.rawExpr(ctx)
+	}
+	return &specir.ExprConditional{
+		BaseExpr: specir.BaseExpr{Span: b.blockSpan(ctx)},
+		Cond:     cond,
+		Then:     thenExpr,
+		Else:     elseExpr,
+	}
+}
+
+func (b *ACSLBuilder) VisitLogical_or_term(ctx *acsl.Logical_or_termContext) interface{} {
+	return b.foldTermPrecedence(ctx)
+}
+func (b *ACSLBuilder) VisitLogical_xor_term(ctx *acsl.Logical_xor_termContext) interface{} {
+	return b.foldTermPrecedence(ctx)
+}
+func (b *ACSLBuilder) VisitLogical_and_term(ctx *acsl.Logical_and_termContext) interface{} {
+	return b.foldTermPrecedence(ctx)
+}
+func (b *ACSLBuilder) VisitBitwise_or_term(ctx *acsl.Bitwise_or_termContext) interface{} {
+	return b.foldTermPrecedence(ctx)
+}
+func (b *ACSLBuilder) VisitBitwise_xor_term(ctx *acsl.Bitwise_xor_termContext) interface{} {
+	return b.foldTermPrecedence(ctx)
+}
+func (b *ACSLBuilder) VisitBitwise_and_term(ctx *acsl.Bitwise_and_termContext) interface{} {
+	return b.foldTermPrecedence(ctx)
+}
+func (b *ACSLBuilder) VisitEquality_term(ctx *acsl.Equality_termContext) interface{} {
+	return b.foldTermPrecedence(ctx)
+}
+func (b *ACSLBuilder) VisitRelational_term(ctx *acsl.Relational_termContext) interface{} {
+	return b.foldTermPrecedence(ctx)
+}
+func (b *ACSLBuilder) VisitShift_term(ctx *acsl.Shift_termContext) interface{} {
+	return b.foldTermPrecedence(ctx)
+}
+func (b *ACSLBuilder) VisitAdditive_term(ctx *acsl.Additive_termContext) interface{} {
+	return b.foldTermPrecedence(ctx)
+}
+func (b *ACSLBuilder) VisitMultiplicative_term(ctx *acsl.Multiplicative_termContext) interface{} {
+	return b.foldTermPrecedence(ctx)
+}
+
+func (b *ACSLBuilder) VisitUnary_term(ctx *acsl.Unary_termContext) interface{} {
+	if ctx == nil || ctx.GetChildCount() == 0 {
+		return b.rawExpr(ctx)
+	}
+	if ctx.GetChildCount() == 1 {
+		return b.visitExprChild(ctx.GetChild(0).(antlr.Tree))
+	}
+
+	opText := ctx.GetChild(0).(antlr.Tree).(antlr.ParseTree).GetText()
+	inner := b.visitExprChild(ctx.GetChild(1).(antlr.Tree))
+	var op specir.UnaryOp
+	switch opText {
+	case "!":
+		op = specir.UnaryNot
+	case "-":
+		op = specir.UnaryMinus
+	case "+":
+		op = specir.UnaryPlus
+	default:
+		// The current IR has no dereference/address-of unary node.
+		return b.rawExpr(ctx)
+	}
+	return &specir.ExprUnary{
+		BaseExpr: specir.BaseExpr{Span: b.blockSpan(ctx)},
+		Op:       op,
+		Expr:     inner,
+	}
+}
+
+func (b *ACSLBuilder) VisitCast_term(ctx *acsl.Cast_termContext) interface{} {
+	if ctx == nil || ctx.GetChildCount() == 0 {
+		return b.rawExpr(ctx)
+	}
+	// ExprCast is not present in the supplied IR. Do not silently erase a cast:
+	// preserve it as a raw expression until the IR has an explicit cast node.
+	if ctx.GetChildCount() > 1 {
+		return b.rawExpr(ctx)
+	}
+	return b.visitExprChild(ctx.GetChild(0).(antlr.Tree))
+}
+
+func (b *ACSLBuilder) VisitPostfix_term(ctx *acsl.Postfix_termContext) interface{} {
+	if ctx == nil || ctx.GetChildCount() == 0 {
+		return b.rawExpr(ctx)
+	}
+	// The current IR has no array-index/member-access expression nodes.
+	// Keep the complete source expression rather than dropping postfix suffixes.
+	if ctx.GetChildCount() > 1 {
+		return b.rawExpr(ctx)
+	}
+	return b.visitExprChild(ctx.GetChild(0).(antlr.Tree))
+}
+
+func (b *ACSLBuilder) VisitVariable_term(ctx *acsl.Variable_termContext) interface{} {
+	if ctx == nil {
+		return nil
+	}
+	name := ctx.GetText()
+	if ctx.Poly_id() != nil {
+		if n, ok := polyIDName(ctx.Poly_id()); ok {
+			name = n
+		}
+	}
+	return &specir.ExprVar{
+		BaseExpr: specir.BaseExpr{Span: b.blockSpan(ctx)},
+		Name:     name,
+	}
+}
+
+func (b *ACSLBuilder) VisitParentheses_term(ctx *acsl.Parentheses_termContext) interface{} {
+	if ctx == nil || ctx.Term() == nil {
+		return b.rawExpr(ctx)
+	}
+	return b.termToExpr(ctx.Term())
+}
+
+// Predicates not covered by the original builder.
+func (b *ACSLBuilder) VisitExclusive_or_pred(ctx *acsl.Exclusive_or_predContext) interface{} {
+	ps := ctx.AllPred()
+	if len(ps) != 2 {
+		return b.rawExpr(ctx)
+	}
+	return &specir.ExprBinary{
+		BaseExpr: specir.BaseExpr{Span: b.blockSpan(ctx)},
+		Op:       specir.OpXor,
+		Left:     b.predToExpr(ps[0]),
+		Right:    b.predToExpr(ps[1]),
+	}
+}
+
+func (b *ACSLBuilder) VisitTernary_condition_term_pred(ctx *acsl.Ternary_condition_term_predContext) interface{} {
+	if ctx == nil || ctx.Term() == nil || len(ctx.AllPred()) != 2 {
+		return b.rawExpr(ctx)
+	}
+	return &specir.ExprConditional{
+		BaseExpr: specir.BaseExpr{Span: b.blockSpan(ctx)},
+		Cond:     b.termToExpr(ctx.Term()),
+		Then:     b.predToExpr(ctx.Pred(0)),
+		Else:     b.predToExpr(ctx.Pred(1)),
+	}
 }

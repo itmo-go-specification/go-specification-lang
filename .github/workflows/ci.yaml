@@ -22,7 +22,7 @@ jobs:
           
       - name: Format check
         run: |
-          files=$(gofmt -l . | grep -v '^samples/' | grep -v '^test_cases/' || true)
+          files=$(gofmt -l . | grep -v '^samples/' | grep -v '^test_cases/' | grep -v '^demo/' || true)
           if [ "$files" != "" ]; then
             echo "Unformatted files found:"
             echo "$files"

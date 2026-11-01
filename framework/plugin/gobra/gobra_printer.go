@@ -14,7 +14,7 @@ func PrintExpr(expr specir.Expr) string {
 }
 
 type Printer struct {
-	buf strings.Builder
+	buf         strings.Builder
 	resultNames []string
 }
 

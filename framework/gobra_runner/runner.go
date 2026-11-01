@@ -178,7 +178,7 @@ func (r *Runner) buildDockerCommand(ctx context.Context, inputFile string) (*exe
 	args = append(args, gobraArgs...)
 
 	cmd := exec.CommandContext(ctx, "docker", args...)
-	
+
 	// Start a goroutine to stop the container when context is cancelled
 	go func() {
 		<-ctx.Done()
@@ -186,7 +186,7 @@ func (r *Runner) buildDockerCommand(ctx context.Context, inputFile string) (*exe
 		stopCmd := exec.Command("docker", "stop", containerName)
 		stopCmd.Run() // Ignore errors, container might not exist
 	}()
-	
+
 	return cmd, nil
 }
 

@@ -64,7 +64,7 @@ type HybridMapping struct {
 // NewHybridMapping creates a new empty HybridMapping
 func NewHybridMapping(sourceFile string) *HybridMapping {
 	return &HybridMapping{
-		Replacements:     make([]Interval, 0),
+		Replacements:  make([]Interval, 0),
 		PointMappings: make([]PointMapping, 0),
 		SourceFile:    sourceFile,
 	}

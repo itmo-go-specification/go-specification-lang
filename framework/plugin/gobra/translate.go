@@ -62,9 +62,9 @@ type GobraGenerationResult struct {
 }
 
 type Replacement struct {
-	SourcePos int
-	SourceEnd   int
-	Insertion string
+	SourcePos     int
+	SourceEnd     int
+	Insertion     string
 	PredicateSpan *gobra_runner.SourcePosition
 }
 
@@ -74,7 +74,7 @@ type GobraGenerator struct {
 	HybridMapping *gobra_runner.HybridMapping
 	sourceOffset  int // Current position in source code
 	currentOffset int // Current position in generated code
-	varCount      int 
+	varCount      int
 	fset          *token.FileSet
 	sourceFile    string
 	sourceCode    string
@@ -83,9 +83,9 @@ type GobraGenerator struct {
 
 func (g *GobraGenerator) AddReplacement(sourcePos int, sourceEnd int, insertion string, predicateSpan *gobra_runner.SourcePosition) {
 	repl := Replacement{
-		SourcePos: sourcePos,
-		SourceEnd: sourceEnd,
-		Insertion: insertion,
+		SourcePos:     sourcePos,
+		SourceEnd:     sourceEnd,
+		Insertion:     insertion,
 		PredicateSpan: predicateSpan,
 	}
 
@@ -93,41 +93,41 @@ func (g *GobraGenerator) AddReplacement(sourcePos int, sourceEnd int, insertion 
 }
 
 func (g *GobraGenerator) Render() (string, error) {
-    sort.SliceStable(g.replacements, func(i, j int) bool {
-        return g.replacements[i].SourcePos < g.replacements[j].SourcePos
-    })
+	sort.SliceStable(g.replacements, func(i, j int) bool {
+		return g.replacements[i].SourcePos < g.replacements[j].SourcePos
+	})
 
-    // Validate: no overlapping replacements.
-    for i := 1; i < len(g.replacements); i++ {
-        prev, curr := g.replacements[i-1], g.replacements[i]
-        if prev.SourceEnd > curr.SourcePos {
-            return "", fmt.Errorf("overlapping replacements at [%d,%d) and [%d,%d)",
-                prev.SourcePos, prev.SourceEnd,
-                curr.SourcePos, curr.SourceEnd)
-        }
-    }
+	// Validate: no overlapping replacements.
+	for i := 1; i < len(g.replacements); i++ {
+		prev, curr := g.replacements[i-1], g.replacements[i]
+		if prev.SourceEnd > curr.SourcePos {
+			return "", fmt.Errorf("overlapping replacements at [%d,%d) and [%d,%d)",
+				prev.SourcePos, prev.SourceEnd,
+				curr.SourcePos, curr.SourceEnd)
+		}
+	}
 
-    var sb strings.Builder
-    cursor := 0
+	var sb strings.Builder
+	cursor := 0
 
-    for _, r := range g.replacements {
-        if r.SourcePos > len(g.sourceCode) || r.SourceEnd > len(g.sourceCode) {
-            return "", fmt.Errorf("replacement [%d,%d) out of bounds (source len %d)",
-                r.SourcePos, r.SourceEnd, len(g.sourceCode))
-        }
-        if r.SourcePos < cursor {
-            return "", fmt.Errorf("replacement at %d starts before current cursor %d",
-                r.SourcePos, cursor)
-        }
+	for _, r := range g.replacements {
+		if r.SourcePos > len(g.sourceCode) || r.SourceEnd > len(g.sourceCode) {
+			return "", fmt.Errorf("replacement [%d,%d) out of bounds (source len %d)",
+				r.SourcePos, r.SourceEnd, len(g.sourceCode))
+		}
+		if r.SourcePos < cursor {
+			return "", fmt.Errorf("replacement at %d starts before current cursor %d",
+				r.SourcePos, cursor)
+		}
 
-        // Copy source unchanged up to the replacement start.
-        sb.WriteString(g.sourceCode[cursor:r.SourcePos])
+		// Copy source unchanged up to the replacement start.
+		sb.WriteString(g.sourceCode[cursor:r.SourcePos])
 
 		interval := gobra_runner.Interval{
 			GenStart:      sb.Len(),
 			GenEnd:        sb.Len() + len(r.Insertion) - 1,
-			SourcePos:     gobra_runner.SourcePosition{ File: g.sourceFile, Offset: r.SourcePos, },
-			SourceEnd:     gobra_runner.SourcePosition{ File: g.sourceFile, Offset: r.SourceEnd, },
+			SourcePos:     gobra_runner.SourcePosition{File: g.sourceFile, Offset: r.SourcePos},
+			SourceEnd:     gobra_runner.SourcePosition{File: g.sourceFile, Offset: r.SourceEnd},
 			PredicateSpan: r.PredicateSpan,
 		}
 		err := g.HybridMapping.AddInterval(interval)
@@ -135,16 +135,16 @@ func (g *GobraGenerator) Render() (string, error) {
 			return "", fmt.Errorf("failed to track addition: %w", err)
 		}
 
-        // Write the replacement.
-        sb.WriteString(r.Insertion)
-        // Advance cursor past the replaced region.
-        cursor = r.SourceEnd
-    }
+		// Write the replacement.
+		sb.WriteString(r.Insertion)
+		// Advance cursor past the replaced region.
+		cursor = r.SourceEnd
+	}
 
-    // Copy any remaining source after the last replacement.
-    sb.WriteString(g.sourceCode[cursor:])
+	// Copy any remaining source after the last replacement.
+	sb.WriteString(g.sourceCode[cursor:])
 
-    return sb.String(), nil
+	return sb.String(), nil
 }
 
 // TrackAddition automatically tracks a code addition by measuring position changes
@@ -222,76 +222,76 @@ func (g *GobraGenerator) CurrentPosition() int {
 }
 
 func (g *GobraGenerator) freshResultName(fn *ast.FuncDecl) string {
-    // Collect all names already used in the result list.
-    used := make(map[string]bool)
-    if fn.Type.Results != nil {
-        for _, field := range fn.Type.Results.List {
-            for _, name := range field.Names {
-                used[name.Name] = true
-            }
-        }
-    }
+	// Collect all names already used in the result list.
+	used := make(map[string]bool)
+	if fn.Type.Results != nil {
+		for _, field := range fn.Type.Results.List {
+			for _, name := range field.Names {
+				used[name.Name] = true
+			}
+		}
+	}
 
-    // Also collect names from parameters to avoid shadowing.
-    if fn.Type.Params != nil {
-        for _, field := range fn.Type.Params.List {
-            for _, name := range field.Names {
-                used[name.Name] = true
-            }
-        }
-    }
+	// Also collect names from parameters to avoid shadowing.
+	if fn.Type.Params != nil {
+		for _, field := range fn.Type.Params.List {
+			for _, name := range field.Names {
+				used[name.Name] = true
+			}
+		}
+	}
 
-    // Increment until we find a name not in use.
-    for {
-        g.varCount++
-        candidate := fmt.Sprintf("r%d", g.varCount)
-        if !used[candidate] {
-            return candidate
-        }
-    }
+	// Increment until we find a name not in use.
+	for {
+		g.varCount++
+		candidate := fmt.Sprintf("r%d", g.varCount)
+		if !used[candidate] {
+			return candidate
+		}
+	}
 }
 
 // nameAllResults mutates fn.Type.Results in-place by assigning fresh names
 // to every unnamed result, then returns the result list rendered as a string.
 func (g *GobraGenerator) nameAllResults(fn *ast.FuncDecl) string {
-    if fn.Type.Results == nil || len(fn.Type.Results.List) == 0 {
-        return ""
-    }
+	if fn.Type.Results == nil || len(fn.Type.Results.List) == 0 {
+		return ""
+	}
 
-    // Mutate the AST: assign fresh names to every unnamed result.
-    for _, field := range fn.Type.Results.List {
-        if len(field.Names) == 0 {
-            field.Names = []*ast.Ident{ast.NewIdent(g.freshResultName(fn))}
-        } else {
-            for _, name := range field.Names {
-                if name.Name == "" || name.Name == "_" {
-                    name.Name = g.freshResultName(fn)
-                }
-            }
-        }
-    }
+	// Mutate the AST: assign fresh names to every unnamed result.
+	for _, field := range fn.Type.Results.List {
+		if len(field.Names) == 0 {
+			field.Names = []*ast.Ident{ast.NewIdent(g.freshResultName(fn))}
+		} else {
+			for _, name := range field.Names {
+				if name.Name == "" || name.Name == "_" {
+					name.Name = g.freshResultName(fn)
+				}
+			}
+		}
+	}
 
-    // Render the (now fully named) result list into a local string builder.
-    var sb strings.Builder
-    sb.WriteString("(")
-    for i, field := range fn.Type.Results.List {
-        if i > 0 {
-            sb.WriteString(", ")
-        }
-        for j, name := range field.Names {
-            if j > 0 {
-                sb.WriteString(", ")
-            }
-            sb.WriteString(name.Name)
-        }
-        sb.WriteString(" ")
-        // Use printer to render the type node into the local builder.
-        if err := printer.Fprint(&sb, g.fset, field.Type); err != nil {
-            sb.WriteString("/* error rendering type */")
-        }
-    }
-    sb.WriteString(")")
-    return sb.String()
+	// Render the (now fully named) result list into a local string builder.
+	var sb strings.Builder
+	sb.WriteString("(")
+	for i, field := range fn.Type.Results.List {
+		if i > 0 {
+			sb.WriteString(", ")
+		}
+		for j, name := range field.Names {
+			if j > 0 {
+				sb.WriteString(", ")
+			}
+			sb.WriteString(name.Name)
+		}
+		sb.WriteString(" ")
+		// Use printer to render the type node into the local builder.
+		if err := printer.Fprint(&sb, g.fset, field.Type); err != nil {
+			sb.WriteString("/* error rendering type */")
+		}
+	}
+	sb.WriteString(")")
+	return sb.String()
 }
 
 func (g *GobraGenerator) GenerateGobraFuncContract(node *ast.Node, funcContract *specir.FuncContract) {
@@ -398,28 +398,29 @@ func (g *GobraGenerator) GenerateGobraPredicate(predicate *specir.LogicDecl) {
 func GenerateGobra(astData *data.ASTData, sourceFile string) (*GobraGenerationResult, error) {
 	g := &GobraGenerator{
 		HybridMapping: gobra_runner.NewHybridMapping(sourceFile),
-		sourceOffset: 0,
+		sourceOffset:  0,
 		currentOffset: 0,
 		sourceFile:    sourceFile,
-		sourceCode: astData.Source,
-		fset: astData.FileSet,
+		sourceCode:    astData.Source,
+		fset:          astData.FileSet,
 	}
 
 	for _, decl := range astData.File.Decls {
 		switch decl.(type) {
-		case *ast.FuncDecl: {
-			sourceResultSection := decl.(*ast.FuncDecl).Type.Results
-			if sourceResultSection == nil {
-				continue
+		case *ast.FuncDecl:
+			{
+				sourceResultSection := decl.(*ast.FuncDecl).Type.Results
+				if sourceResultSection == nil {
+					continue
+				}
+
+				sourcePos := astData.FileSet.Position(sourceResultSection.Pos()).Offset
+				sourceEnd := astData.FileSet.Position(sourceResultSection.End()).Offset
+
+				namedResultsSection := g.nameAllResults(decl.(*ast.FuncDecl))
+
+				g.AddReplacement(sourcePos, sourceEnd, namedResultsSection, nil)
 			}
-
-			sourcePos := astData.FileSet.Position(sourceResultSection.Pos()).Offset
-			sourceEnd := astData.FileSet.Position(sourceResultSection.End()).Offset
-
-			namedResultsSection := g.nameAllResults(decl.(*ast.FuncDecl))
-			
-			g.AddReplacement(sourcePos, sourceEnd, namedResultsSection, nil)
-		}
 		}
 	}
 

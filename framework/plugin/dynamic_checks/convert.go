@@ -112,11 +112,7 @@ func convertExpr(conv exprConverter, expr specir.Expr) ast.Expr {
 			X:  conv.Convert(e.Expr),
 		}
 	case *specir.ExprBinary:
-		return &ast.BinaryExpr{
-			X:  conv.Convert(e.Left),
-			Op: convertBinaryOp(e.Op),
-			Y:  conv.Convert(e.Right),
-		}
+		return convertBinary(conv, e)
 	case *specir.ExprCall:
 		return convertCall(conv, e)
 	case *specir.ExprConditional:
@@ -174,6 +170,98 @@ func convertUnaryOp(op specir.UnaryOp) token.Token {
 		return token.NOT
 	default:
 		return token.ADD
+	}
+}
+
+func convertBinary(conv exprConverter, e *specir.ExprBinary) ast.Expr {
+	left := conv.Convert(e.Left)
+	right := conv.Convert(e.Right)
+
+	if e.Op == specir.OpImplies {
+		leftNot := &ast.UnaryExpr{
+			Op: token.NOT,
+			X:  left,
+		}
+		if _, ok := left.(*ast.BinaryExpr); ok {
+			leftNot.X = &ast.ParenExpr{X: left}
+		}
+
+		return &ast.BinaryExpr{
+			X:  leftNot,
+			Op: token.LOR,
+			Y:  right,
+		}
+	}
+
+	op := convertBinaryOp(e.Op)
+	parentPrec := precedenceOfGoToken(op)
+
+	return &ast.BinaryExpr{
+		X:  wrapIfNeeded(left, parentPrec, leftOperand, op),
+		Op: op,
+		Y:  wrapIfNeeded(right, parentPrec, rightOperand, op),
+	}
+}
+
+type operandSide int
+
+const (
+	leftOperand operandSide = iota
+	rightOperand
+)
+
+func wrapIfNeeded(expr ast.Expr, parentPrec int, side operandSide, parentOp token.Token) ast.Expr {
+	child, ok := expr.(*ast.BinaryExpr)
+	if !ok {
+		return expr
+	}
+
+	childPrec := precedenceOfGoToken(child.Op)
+
+	if childPrec < parentPrec {
+		return &ast.ParenExpr{X: expr}
+	}
+	if childPrec > parentPrec {
+		return expr
+	}
+
+	// При одинаковом приоритете учитываем ассоциативность.
+	// Для правого операнда скобки необходимы, если изменение
+	// группировки может изменить семантику выражения.
+	if side == rightOperand && !isAssociative(parentOp, child.Op) {
+		return &ast.ParenExpr{X: expr}
+	}
+
+	return expr
+}
+
+func isAssociative(parentOp, childOp token.Token) bool {
+	if parentOp != childOp {
+		return false
+	}
+
+	switch parentOp {
+	case token.ADD, token.MUL, token.LAND, token.LOR:
+		return true
+	default:
+		return false
+	}
+}
+
+func precedenceOfGoToken(op token.Token) int {
+	switch op {
+	case token.LOR:
+		return 1
+	case token.LAND:
+		return 2
+	case token.EQL, token.NEQ, token.LSS, token.LEQ, token.GTR, token.GEQ:
+		return 3
+	case token.ADD, token.SUB, token.OR, token.XOR:
+		return 4
+	case token.MUL, token.QUO, token.REM, token.SHL, token.SHR, token.AND, token.AND_NOT:
+		return 5
+	default:
+		return 0
 	}
 }
 

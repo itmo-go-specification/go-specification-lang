@@ -1,0 +1,9 @@
+package labeled
+
+import checks "gpma/framework/plugin/dynamic_checks/check"
+
+func Precedence() {
+	checks.CheckAt(1+2*3 == 7, "../../../samples/projects/expr/precedence.go", 4, "assertion")
+
+	return
+}

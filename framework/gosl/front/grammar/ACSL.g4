@@ -58,45 +58,101 @@ unary_op
     ;
 
 term
+    : conditional_term
+    ;
+
+conditional_term
+    : logical_or_term ('?' term ':' conditional_term)?
+    ;
+
+logical_or_term
+    : logical_xor_term ( '||' logical_xor_term )*
+    ;
+
+logical_xor_term
+    : logical_and_term ( '^^' logical_and_term )*
+    ;
+
+logical_and_term
+    : bitwise_or_term ( '&&' bitwise_or_term )*
+    ;
+
+bitwise_or_term
+    : bitwise_xor_term ( '|' bitwise_xor_term )*
+    ;
+
+bitwise_xor_term
+    : bitwise_and_term ( '^' bitwise_and_term )*
+    ;
+
+bitwise_and_term
+    : equality_term ( '&' equality_term )*
+    ;
+
+equality_term
+    : relational_term ( ('==' | '!=') relational_term )*
+    ;
+
+relational_term
+    : shift_term ( ('<' | '>' | '<=' | '>=') shift_term )*
+    ;
+
+shift_term
+    : additive_term ( ('<<' | '>>') additive_term )*
+    ;
+
+additive_term
+    : multiplicative_term ( ('+' | '-') multiplicative_term )*
+    ;
+
+multiplicative_term
+    : unary_term ( ('*' | '/' | '%') unary_term )*
+    ;
+
+unary_term
+    : unary_op unary_term
+    | cast_term
+    ;
+
+cast_term
+    : '(' type_expr ')' unary_term
+    | postfix_term
+    ;
+
+postfix_term
+    : primary_term postfix_suffix*
+    ;
+
+postfix_suffix
+    : '[' term ']'                         # array_access_suffix
+    | '.' id                               # structure_field_access_suffix
+    | '->' id                              # pointer_structure_field_access_suffix
+    ;
+
+primary_term
     : literal                                           # literal_term
     | poly_id                                           # variable_term
-    | unary_op term                                     # unary_op_term
-    | term bin_op term                                  # binary_op_term
-    | term '[' term ']'                                 # array_access_term
     | '{' term '\\with' '[' term ']' '=' term '}'       # array_func_modifier_term
-    | term '.' id                                       # structure_field_access_term
     | '{' term '\\with' '.' id '=' term '}'             # field_func_modifier_term
-    | term '->' id                                      # pointer_structure_field_access_term
-    | '(' type_expr ')' term                            # cast_term
     | poly_id '(' term (',' term)* ')'                  # func_application_term
     | '(' term ')'                                      # parentheses_term
-    | term '?' term ':' term                            # ternary_cond_term
     | '\\let' id '=' term ';' term                      # local_binding_term
     | 'sizeof' '(' term ')'                             # sizeof_term
     | 'sizeof' '(' typeName ')'                         # sizeof_type_term
     | id ':' term                                       # syntactic_naming_term
     | string ':' term                                   # syntactic_naming_term
-// oldandresult.tex
     | '\\old' '(' term ')'                              # old_term
     | '\\result'                                        # result_term
-// own additions: indexed result for multi-return functions
     | '\\result_' Constant                              # result_n_term
-// memory.tex:
     | '\\null'                                          # null_term
     | '\\base_addr' one_label? '(' term ')'             # base_addr_term
     | '\\block_length' one_label? '(' term ')'          # block_length_term
-// start of own addition
     | '\\length' one_label? '(' term ')'                # length_term
-// end of own addition
-    | '\\offset' one_label?  '(' term ')'               # offset_term
-    | '{' '\\allocation' '}' one_label?   '(' term ')'  # allocation_term
-// exitbehavior.tex
+    | '\\offset' one_label? '(' term ')'                # offset_term
+    | '{' '\\allocation' '}' one_label? '(' term ')'    # allocation_term
     | '\\exit_status'                                   # exit_status_term
-// at.tex
     | '\\at' '(' term ',' label_id ')'                  # at_term
-// own additions - start
     | '\\internal'                                      # internal_term
-// own additions - end
     ;
 
 poly_id

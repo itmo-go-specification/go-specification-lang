@@ -93,67 +93,151 @@ func extractExistsRange(conv exprConverter, body specir.Expr, varName string) *r
 //
 // Returns (lo, hi) as IR Expr nodes, or (nil, nil) if the pattern is not matched.
 func extractBounds(guard specir.Expr, varName string) (lo, hi specir.Expr) {
-	// Case: lo <= i && i < hi  OR  lo <= i && i <= hi
-	if and, ok := guard.(*specir.ExprBinary); ok && and.Op == specir.OpAnd {
-		loExpr := extractLowerBound(and.Left, varName)
-		hiExpr := extractUpperBound(and.Right, varName)
-		if loExpr != nil && hiExpr != nil {
-			return loExpr, hiExpr
+	parts := flattenAnd(guard)
+
+	var loExpr, hiExpr specir.Expr
+
+	for _, part := range parts {
+		lower := extractLowerBound(part, varName)
+		upper := extractUpperBound(part, varName)
+
+		if lower != nil {
+			if loExpr != nil {
+				// Несколько нижних границ: шаблон неоднозначен.
+				return nil, nil
+			}
+			loExpr = lower
 		}
-		// Try reversed order: i < hi && lo <= i
-		loExpr = extractLowerBound(and.Right, varName)
-		hiExpr = extractUpperBound(and.Left, varName)
-		if loExpr != nil && hiExpr != nil {
-			return loExpr, hiExpr
+
+		if upper != nil {
+			if hiExpr != nil {
+				// Несколько верхних границ: шаблон неоднозначен.
+				return nil, nil
+			}
+			hiExpr = upper
 		}
 	}
 
-	// Case: i < hi  (no lower bound — default to 0)
-	if hiExpr := extractUpperBound(guard, varName); hiExpr != nil {
-		zero := &specir.ExprLiteral{Kind: specir.LitInteger, Int: 0}
-		return zero, hiExpr
+	// Без верхней границы нельзя построить конечный диапазон.
+	if hiExpr == nil {
+		return nil, nil
 	}
 
-	return nil, nil
+	// Если нижняя граница не задана, используем 0.
+	if loExpr == nil {
+		loExpr = &specir.ExprLiteral{
+			Kind: specir.LitInteger,
+			Int:  0,
+		}
+	}
+
+	return loExpr, hiExpr
 }
 
-// extractLowerBound matches  lo <= i  (i.e. ExprBinary{OpLe, lo, ExprVar{varName}}).
+func flattenAnd(expr specir.Expr) []specir.Expr {
+	bin, ok := expr.(*specir.ExprBinary)
+	if !ok || bin.Op != specir.OpAnd {
+		return []specir.Expr{expr}
+	}
+
+	left := flattenAnd(bin.Left)
+	right := flattenAnd(bin.Right)
+
+	return append(left, right...)
+}
+
+// extractLowerBound matches lower-bound conditions of the form:
+//
+//	lo <= i
+//	i >= lo
+//	lo < i
+//	i > lo
+//
+// Strict inequalities are adjusted by adding 1 to the bound,
+// assuming integer values.
 func extractLowerBound(expr specir.Expr, varName string) specir.Expr {
 	bin, ok := expr.(*specir.ExprBinary)
 	if !ok {
 		return nil
 	}
-	if bin.Op == specir.OpLe {
+
+	switch bin.Op {
+	case specir.OpLe:
 		if isVar(bin.Right, varName) {
 			return bin.Left
 		}
+
+	case specir.OpGe:
+		if isVar(bin.Left, varName) {
+			return bin.Right
+		}
+
+	case specir.OpLt:
+		if isVar(bin.Right, varName) {
+			return addOne(bin.Left)
+		}
+
+	case specir.OpGt:
+		if isVar(bin.Left, varName) {
+			return addOne(bin.Right)
+		}
 	}
+
 	return nil
 }
 
-// extractUpperBound matches  i < hi  or  i <= hi.
-// For  i <= hi  we wrap hi in  hi+1  so the generated for-loop uses strict <.
+func addOne(expr specir.Expr) specir.Expr {
+	return &specir.ExprBinary{
+		Left: expr,
+		Op:   specir.OpAdd,
+		Right: &specir.ExprLiteral{
+			Kind: specir.LitInteger,
+			Int:  1,
+		},
+	}
+}
+
+// extractUpperBound matches upper-bound conditions of the form:
+//
+//	i < hi
+//	i <= hi
+//	hi > i
+//	hi >= i
+//
+// Inclusive upper bounds are adjusted by adding 1, so the generated
+// for-loop can use a strict less-than comparison.
 func extractUpperBound(expr specir.Expr, varName string) specir.Expr {
 	bin, ok := expr.(*specir.ExprBinary)
 	if !ok {
 		return nil
 	}
+
 	switch bin.Op {
 	case specir.OpLt:
 		// i < hi
 		if isVar(bin.Left, varName) {
 			return bin.Right
 		}
+
 	case specir.OpLe:
-		// i <= hi  →  treat upper bound as hi+1
+		// i <= hi => hi + 1
 		if isVar(bin.Left, varName) {
-			return &specir.ExprBinary{
-				Op:    specir.OpAdd,
-				Left:  bin.Right,
-				Right: &specir.ExprLiteral{Kind: specir.LitInteger, Int: 1},
-			}
+			return addOne(bin.Right)
+		}
+
+	case specir.OpGt:
+		// hi > i
+		if isVar(bin.Right, varName) {
+			return bin.Left
+		}
+
+	case specir.OpGe:
+		// hi >= i => hi + 1
+		if isVar(bin.Right, varName) {
+			return addOne(bin.Left)
 		}
 	}
+
 	return nil
 }
 

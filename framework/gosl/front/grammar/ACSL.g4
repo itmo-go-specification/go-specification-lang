@@ -42,13 +42,6 @@ literal
     | string                                            # string_constant
     ;
 
-bin_op
-    : '+' | '-' | '*' | '/' | '%' | '<<' | '>>'
-    | '==' | '!=' | '<=' | '>=' | '>' | '<'
-    | '&&' | '||' | '^^'
-    | '&' | '|' | '-->' | '<-->' | '^'
-    ;
-
 unary_op
     : '+' | '-'
     | '!'
@@ -60,14 +53,20 @@ unary_op
 term
     : literal                                           # literal_term
     | poly_id                                           # variable_term
-    | unary_op term                                     # unary_op_term
-    | term bin_op term                                  # binary_op_term
     | term '[' term ']'                                 # array_access_term
     | '{' term '\\with' '[' term ']' '=' term '}'       # array_func_modifier_term
     | term '.' id                                       # structure_field_access_term
     | '{' term '\\with' '.' id '=' term '}'             # field_func_modifier_term
     | term '->' id                                      # pointer_structure_field_access_term
+    | unary_op term                                     # unary_op_term
     | '(' type_expr ')' term                            # cast_term
+    | term op=('*' | '/' | '%') term                    # binary_op_term
+    | term op=('+' | '-') term                          # binary_op_term
+    | term op=('<<' | '>>') term                        # binary_op_term
+    | term op='&' term                                  # binary_op_term
+    | term op='^' term                                  # binary_op_term
+    | term op='|' term                                  # binary_op_term
+    | term op=('-->' | '<-->') term                     # binary_op_term
     | poly_id '(' term (',' term)* ')'                  # func_application_term
     | '(' term ')'                                      # parentheses_term
     | term '?' term ':' term                            # ternary_cond_term

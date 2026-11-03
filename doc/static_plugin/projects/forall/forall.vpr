@@ -1,0 +1,52 @@
+domain IArray {
+    function slot(a: IArray, i: Int): Ref
+    function len(a: IArray): Int
+    function first(r: Ref): IArray
+    function second(r: Ref): Int
+    
+    axiom all_diff {
+        forall a: IArray, i: Int ::
+            { slot(a, i) } first(slot(a, i)) == a
+            && second(slot(a, i)) == i
+    }
+    
+    axiom len_nonneg {
+        forall a: IArray :: { len(a) } len(a) >= 0
+    }
+}
+
+field val: Int
+
+define access(a) (forall j: Int ::
+    0 <= j && j < len(a) ==> acc(slot(a, j).val))
+
+method SumPositive(a: IArray, n: Int) returns (res: Int)
+    requires access(a)
+    requires 0 <= n && n <= len(a)
+    requires forall i: Int :: 0 <= i && i < n ==> slot(a, i).val >= 0
+    ensures access(a)
+    ensures res >= 0
+{
+    var s: Int := 0
+    var i: Int := 0
+    
+    while (i < n)
+        invariant access(a)
+        invariant forall j: Int :: 0 <= j && j < n ==> slot(a, j).val >= 0
+        invariant 0 <= i && i <= n
+    {
+        s := s + slot(a, i).val
+        i := i + 1
+    }
+    
+    res := s
+}
+
+method FirstElement(a: IArray, n: Int) returns (res: Int)
+    requires access(a)
+    requires 0 < n && n <= len(a)
+    ensures access(a)
+    ensures exists i: Int :: 0 <= i && i < n && res == slot(a, i).val
+{
+    res := slot(a, 0).val
+}

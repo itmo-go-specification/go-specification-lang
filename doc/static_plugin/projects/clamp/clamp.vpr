@@ -1,0 +1,14 @@
+method clamp(x: Int, min: Int, max: Int) returns (res: Int) {
+    assert min <= max
+    if (x < min) {
+        res := min
+    }
+    
+    assert x >= min
+    if (x > max) {
+        res := max
+    }
+    
+    assert res >= min && res <= max
+    res := x
+}

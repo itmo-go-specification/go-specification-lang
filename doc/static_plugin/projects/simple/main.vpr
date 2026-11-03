@@ -1,0 +1,11 @@
+method check(f: Bool) returns ()
+    requires f == true
+{
+// skip
+// fmt.Printf("Passed\n")
+}
+
+method Main() returns () {
+    check(false)
+}
+

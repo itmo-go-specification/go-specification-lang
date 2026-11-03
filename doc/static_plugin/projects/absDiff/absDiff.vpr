@@ -1,0 +1,13 @@
+method absDiff(a: Int, b: Int) returns (res: Int)
+    requires true
+    ensures res >= 0
+{
+    var d: Int := a - b;
+    
+    assert d >= 0 || -d >= 0
+    if (d < 0) {
+        d := -d
+    }
+    res := d
+    assert res >= 0
+}

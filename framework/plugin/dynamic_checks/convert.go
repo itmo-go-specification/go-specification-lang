@@ -6,6 +6,7 @@ import (
 	"go/token"
 	specir "gpma/framework/gosl/ir"
 	"strconv"
+	"strings"
 )
 
 type exprConverter interface {
@@ -154,12 +155,12 @@ func convertLiteral(lit *specir.ExprLiteral) ast.Expr {
 	case specir.LitReal:
 		return &ast.BasicLit{
 			Kind:  token.FLOAT,
-			Value: fmt.Sprintf("%f", lit.Real),
+			Value: formatFloatLit(lit.Real),
 		}
 	case specir.LitFloat:
 		return &ast.BasicLit{
 			Kind:  token.FLOAT,
-			Value: fmt.Sprintf("%f", lit.Float),
+			Value: formatFloatLit(lit.Float),
 		}
 	case specir.LitString:
 		return &ast.BasicLit{
@@ -169,6 +170,14 @@ func convertLiteral(lit *specir.ExprLiteral) ast.Expr {
 	default:
 		panic(fmt.Sprintf("unsupported literal kind: %v", lit.Kind))
 	}
+}
+
+func formatFloatLit(f float64) string {
+	s := strconv.FormatFloat(f, 'f', -1, 64)
+	if !strings.Contains(s, ".") {
+		s += ".0"
+	}
+	return s
 }
 
 func convertUnaryOp(op specir.UnaryOp) token.Token {

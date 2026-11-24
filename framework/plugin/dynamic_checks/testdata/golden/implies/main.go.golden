@@ -1,0 +1,12 @@
+package main
+
+import checks "gpma/framework/plugin/dynamic_checks/check"
+
+var zero int
+
+func main() {
+	checks.CheckAt(!false || true, "../../../samples/projects/implies/main.go", 6, "assertion")
+	checks.CheckAt(!false || 1/zero == 1, "../../../samples/projects/implies/main.go", 7, "assertion")
+
+	return
+}

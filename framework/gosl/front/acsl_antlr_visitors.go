@@ -441,6 +441,24 @@ func (b *ACSLBuilder) VisitOld_term(ctx *acsl.Old_termContext) interface{} {
 	}
 }
 
+func (b *ACSLBuilder) VisitAt_term(ctx *acsl.At_termContext) interface{} {
+	inner := b.termToExpr(ctx.Term())
+	switch ctx.Label_id().GetText() {
+	case "Here":
+		return inner
+	case "Pre":
+		return &specir.ExprOld{
+			BaseExpr: specir.BaseExpr{Span: b.blockSpan(ctx)},
+			Inner:    inner,
+		}
+	default:
+		return &specir.ExprVar{
+			BaseExpr: specir.BaseExpr{Span: b.blockSpan(ctx)},
+			Name:     ctx.GetText(),
+		}
+	}
+}
+
 func (b *ACSLBuilder) VisitResult_term(ctx *acsl.Result_termContext) interface{} {
 	log.Debug("VisitResult_term text:", ctx.GetText())
 	return &specir.ExprResult{BaseExpr: specir.BaseExpr{Span: b.blockSpan(ctx)}, Index: 0}

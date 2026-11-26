@@ -2,9 +2,22 @@ package errors
 
 import (
 	"bytes"
+	"encoding/json"
 	"strings"
 	"testing"
 )
+
+type testJSONFormatter struct{}
+
+func (testJSONFormatter) FormatError(err *Error, _ FormatterConfig) (string, error) {
+	data, marshalErr := json.Marshal(err)
+	return string(data), marshalErr
+}
+
+func (testJSONFormatter) FormatErrors(errs []*Error, _ FormatterConfig) (string, error) {
+	data, marshalErr := json.Marshal(errs)
+	return string(data), marshalErr
+}
 
 func TestErrorReporterImpl_ReportError(t *testing.T) {
 	tests := []struct {
@@ -154,12 +167,8 @@ func TestErrorReporterImpl_SetFormatter(t *testing.T) {
 		},
 	}
 
-	// Change formatter to JSON
-	jsonFormatter, err := getFormatter(FormatJSON)
-	if err != nil {
-		t.Fatalf("Failed to get JSON formatter: %v", err)
-	}
-	reporter.SetFormatter(jsonFormatter)
+	// Change formatter to JSON without depending on formatter_factory registration.
+	reporter.SetFormatter(testJSONFormatter{})
 
 	testError := &Error{
 		Position: Position{

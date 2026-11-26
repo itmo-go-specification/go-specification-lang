@@ -273,7 +273,7 @@ func TestRunner_buildGobraArgs(t *testing.T) {
 			settings: Settings{
 				GobraBackend: "silicon",
 			},
-			wantArgs: []string{"--input", "test.go", "--backend", "silicon"},
+			wantArgs: []string{"-i", "test.go", "--backend", "silicon"},
 		},
 		{
 			name: "Full settings",
@@ -288,7 +288,7 @@ func TestRunner_buildGobraArgs(t *testing.T) {
 				ExtraFlags:                []string{"--custom-flag"},
 			},
 			wantArgs: []string{
-				"--input", "test.go",
+				"-i", "test.go",
 				"--backend", "silicon",
 				"--z3Exe", "z3",
 				"--logLevel", "ERROR",

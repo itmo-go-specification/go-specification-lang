@@ -41,7 +41,11 @@ func (a *Interval) Length() int {
 
 // Delta returns the length of the added interval minus the length of the replaced interval
 func (a *Interval) Delta() int {
-	return a.GenEnd - a.GenStart + 1 - (a.SourceEnd.Offset - a.SourcePos.Offset)
+	sourceLength := a.SourceEnd.Offset - a.SourcePos.Offset
+	if sourceLength < 0 {
+		sourceLength = 0
+	}
+	return a.GenEnd - a.GenStart + 1 - sourceLength
 }
 
 // PointMapping represents a point-to-point mapping using byte offsets

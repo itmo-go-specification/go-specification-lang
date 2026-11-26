@@ -75,10 +75,20 @@ func (f *Framework) ProcessFile(filepath string) (*Result, error) {
 	// Collecting commnet block from astData
 	blocks := front.CollectRawBlocks(astData.FileSet, astData.File, astData.FileSet.File(astData.File.Pos()).Name())
 	// Parsing GOSL -> creating SpecModule
-	spec, err := front.BuildSpecModule(blocks)
+	spec, specErr := front.BuildSpecModule(blocks)
+	// TODO: обработать ошибку BuildSpecModule после реализации поддержки ACSL
+	if specErr == nil {
+		astData, err = bind.Bind(astData, spec)
+		if err != nil {
+			return nil, fmt.Errorf("failed to bind spec: %w", err)
+		}
+	}
 
 	// binding ast and specifications together
 	astData, err = bind.Bind(astData, spec)
+	if err != nil {
+		return nil, fmt.Errorf("failed to bind spec: %w", err)
+	}
 
 	runner := plugin.NewPluginRunner(f.plugins)
 	runnerResult, err := runner.Run(astData)

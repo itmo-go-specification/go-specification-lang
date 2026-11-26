@@ -3,6 +3,7 @@ package dynamicchecks
 import (
 	"fmt"
 	"go/ast"
+	goparser "go/parser"
 	"go/token"
 	specir "gpma/framework/gosl/ir"
 	"strconv"
@@ -30,11 +31,13 @@ type contractConverter struct {
 	oldOrder    []specir.Expr
 	counter     int
 	resultInfos []resultInfo // nil means use __result_N fallback
+	varTypes    map[string]ast.Expr
 }
 
 type oldVarInfo struct {
 	name       string
 	expr       specir.Expr
+	access     string
 	isDeclared bool
 }
 
@@ -42,6 +45,18 @@ func newContractConverter() *contractConverter {
 	return &contractConverter{
 		oldVars:  make(map[specir.Expr]*oldVarInfo),
 		oldOrder: make([]specir.Expr, 0),
+		varTypes: make(map[string]ast.Expr),
+	}
+}
+
+func (c *contractConverter) SetFuncVarTypes(funcDecl *ast.FuncDecl) {
+	if funcDecl.Type.Params == nil {
+		return
+	}
+	for _, field := range funcDecl.Type.Params.List {
+		for _, name := range field.Names {
+			c.varTypes[name.Name] = field.Type
+		}
 	}
 }
 
@@ -66,19 +81,67 @@ func (c *contractConverter) Convert(expr specir.Expr) ast.Expr {
 }
 
 func (c *contractConverter) CollectOld(expr specir.Expr) {
-	specir.Walk(expr, func(e specir.Expr) bool {
-		if old, ok := e.(*specir.ExprOld); ok {
-			if _, exists := c.oldVars[old.Inner]; !exists {
-				c.counter++
-				c.oldVars[old.Inner] = &oldVarInfo{
-					name: fmt.Sprintf("__old_%d", c.counter),
-					expr: old.Inner,
-				}
-				c.oldOrder = append(c.oldOrder, old.Inner)
-			}
+	c.collectOld(expr, nil)
+}
+
+func (c *contractConverter) collectOld(expr specir.Expr, boundVars map[string]bool) {
+	if expr == nil {
+		return
+	}
+	switch e := expr.(type) {
+	case *specir.ExprOld:
+		if _, exists := c.oldVars[e.Inner]; exists {
+			return
 		}
-		return true
-	})
+		snapshot, access := oldSnapshotTarget(e.Inner, boundVars)
+		c.counter++
+		c.oldVars[e.Inner] = &oldVarInfo{
+			name:   fmt.Sprintf("__old_%d", c.counter),
+			expr:   snapshot,
+			access: access,
+		}
+		c.oldOrder = append(c.oldOrder, e.Inner)
+	case *specir.ExprQuantifier:
+		nested := make(map[string]bool, len(boundVars)+len(e.Vars))
+		for name := range boundVars {
+			nested[name] = true
+		}
+		for _, variable := range e.Vars {
+			nested[variable.Name] = true
+		}
+		c.collectOld(e.Body, nested)
+	case *specir.ExprUnary:
+		c.collectOld(e.Expr, boundVars)
+	case *specir.ExprBinary:
+		c.collectOld(e.Left, boundVars)
+		c.collectOld(e.Right, boundVars)
+	case *specir.ExprCall:
+		for _, arg := range e.Args {
+			c.collectOld(arg, boundVars)
+		}
+	case *specir.ExprConditional:
+		c.collectOld(e.Cond, boundVars)
+		c.collectOld(e.Then, boundVars)
+		c.collectOld(e.Else, boundVars)
+	}
+}
+
+func oldSnapshotTarget(expr specir.Expr, boundVars map[string]bool) (specir.Expr, string) {
+	v, ok := expr.(*specir.ExprVar)
+	if !ok {
+		return expr, ""
+	}
+	open := strings.IndexByte(v.Name, '[')
+	if open <= 0 || !token.IsIdentifier(v.Name[:open]) {
+		return expr, ""
+	}
+	access := v.Name[open:]
+	for name := range boundVars {
+		if strings.Contains(access, "["+name+"]") {
+			return &specir.ExprVar{Name: v.Name[:open]}, access
+		}
+	}
+	return expr, ""
 }
 
 func (c *contractConverter) GetOldVars() []*oldVarInfo {
@@ -89,6 +152,27 @@ func (c *contractConverter) GetOldVars() []*oldVarInfo {
 	return result
 }
 
+func (c *contractConverter) OldSnapshotExpr(info *oldVarInfo) ast.Expr {
+	source := c.Convert(info.expr)
+	v, ok := info.expr.(*specir.ExprVar)
+	if !ok {
+		return source
+	}
+	sliceType, ok := c.varTypes[v.Name].(*ast.ArrayType)
+	if !ok || sliceType.Len != nil {
+		return source
+	}
+	emptySlice := &ast.CallExpr{
+		Fun:  &ast.ArrayType{Elt: sliceType.Elt},
+		Args: []ast.Expr{&ast.Ident{Name: "nil"}},
+	}
+	return &ast.CallExpr{
+		Fun:      &ast.Ident{Name: "append"},
+		Args:     []ast.Expr{emptySlice, source},
+		Ellipsis: token.Pos(1),
+	}
+}
+
 func (c *contractConverter) newVar() string {
 	c.counter++
 	return strconv.Itoa(c.counter)
@@ -96,6 +180,11 @@ func (c *contractConverter) newVar() string {
 
 func (c *contractConverter) convertOld(old *specir.ExprOld) ast.Expr {
 	if info, exists := c.oldVars[old.Inner]; exists && info.isDeclared {
+		if info.access != "" {
+			if expr, err := goparser.ParseExpr(info.name + info.access); err == nil {
+				return expr
+			}
+		}
 		return &ast.Ident{Name: info.name}
 	}
 	return c.Convert(old.Inner)

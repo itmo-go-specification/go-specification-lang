@@ -55,5 +55,12 @@ func (b *ACSLBuilder) VisitFunction_contract(ctx *acsl.Function_contractContext)
 		b.Visit(sc)
 	}
 
+	for _, nb := range ctx.AllNamed_behavior() {
+		behavior, ok := b.Visit(nb).(specir.Behavior)
+		if ok {
+			b.currFunc.Behaviors = append(b.currFunc.Behaviors, behavior)
+		}
+	}
+
 	return nil
 }

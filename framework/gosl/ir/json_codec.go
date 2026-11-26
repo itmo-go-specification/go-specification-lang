@@ -383,6 +383,7 @@ func (c FuncContract) MarshalJSON() ([]byte, error) {
 		Span         Span             `json:"span,omitempty"`
 		Requires     []NamedPredicate `json:"requires,omitempty"`
 		Ensures      []NamedPredicate `json:"ensures,omitempty"`
+		Behaviors    []Behavior       `json:"behaviors,omitempty"`
 		Assigns      LocationSet      `json:"assigns"`
 	}
 	return json.Marshal(alias{
@@ -391,6 +392,7 @@ func (c FuncContract) MarshalJSON() ([]byte, error) {
 		Span:         c.Span,
 		Requires:     c.Requires,
 		Ensures:      c.Ensures,
+		Behaviors:    c.Behaviors,
 		Assigns:      c.Assigns,
 	})
 }
@@ -402,6 +404,7 @@ func (c *FuncContract) UnmarshalJSON(data []byte) error {
 		Span         Span             `json:"span,omitempty"`
 		Requires     []NamedPredicate `json:"requires,omitempty"`
 		Ensures      []NamedPredicate `json:"ensures,omitempty"`
+		Behaviors    []Behavior       `json:"behaviors,omitempty"`
 		Assigns      LocationSet      `json:"assigns"`
 	}
 	var a alias
@@ -413,6 +416,7 @@ func (c *FuncContract) UnmarshalJSON(data []byte) error {
 	c.Span = a.Span
 	c.Requires = a.Requires
 	c.Ensures = a.Ensures
+	c.Behaviors = a.Behaviors
 	c.Assigns = a.Assigns
 	return nil
 }

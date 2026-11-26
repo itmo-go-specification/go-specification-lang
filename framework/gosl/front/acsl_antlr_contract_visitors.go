@@ -78,3 +78,58 @@ func (b *ACSLBuilder) VisitEnsures_clause(ctx *acsl.Ensures_clauseContext) inter
 	np.StartPos, np.EndPos = b.blockPositions(ctx)
 	return np
 }
+
+func (b *ACSLBuilder) VisitAssumes_clause(ctx *acsl.Assumes_clauseContext) interface{} {
+	if ctx == nil {
+		return nil
+	}
+	np := b.parseNamedPred(ctx.Pred())
+	np.StartPos, np.EndPos = b.blockPositions(ctx)
+	return np
+}
+
+func (b *ACSLBuilder) VisitNamed_behavior(ctx *acsl.Named_behaviorContext) interface{} {
+	if ctx == nil {
+		return nil
+	}
+
+	behavior := specir.Behavior{
+		Name: ctx.Id().GetText(),
+		Span: b.blockSpan(ctx),
+	}
+	behavior.StartPos, behavior.EndPos = b.blockPositions(ctx)
+
+	body := ctx.Behavior_body()
+	if body == nil {
+		return behavior
+	}
+
+	for _, assumes := range body.AllAssumes_clause() {
+		np, ok := b.Visit(assumes).(specir.NamedPredicate)
+		if ok {
+			behavior.Assumes = append(behavior.Assumes, np)
+		}
+	}
+	for _, requires := range body.AllRequires_clause() {
+		np, ok := b.Visit(requires).(specir.NamedPredicate)
+		if ok {
+			behavior.Requires = append(behavior.Requires, np)
+		}
+	}
+	for _, clause := range body.AllSimple_clause() {
+		if ensures := clause.Ensures_clause(); ensures != nil {
+			np, ok := b.Visit(ensures).(specir.NamedPredicate)
+			if ok {
+				behavior.Ensures = append(behavior.Ensures, np)
+			}
+		}
+		if assigns := clause.Assigns_clause(); assigns != nil {
+			locations, ok := b.Visit(assigns).(specir.LocationSet)
+			if ok {
+				behavior.Assigns = locations
+			}
+		}
+	}
+
+	return behavior
+}

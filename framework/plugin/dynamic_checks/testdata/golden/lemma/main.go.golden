@@ -1,0 +1,50 @@
+package main
+
+import checks "gpma/framework/plugin/dynamic_checks/check"
+
+/*
+@
+requires n >= 0;
+ensures \result >= n;
+ensures \result > 0;
+*/
+func IncNonNegative(n int) int {
+	checks.CheckAt(n >= 0, "../../../samples/projects/lemma/main.go", 14, "precondition")
+	var __result_0 int
+	defer func() {
+		checks.CheckAt(__result_0 >= n, "../../../samples/projects/lemma/main.go", 15, "postcondition")
+	}()
+	defer func() {
+		checks.CheckAt(__result_0 > 0, "../../../samples/projects/lemma/main.go", 16, "postcondition")
+	}()
+	{
+		__result_0 = n + 1
+		return __result_0
+	}
+}
+
+/*
+@
+requires a <= b;
+ensures \result >= a;
+ensures \result <= b;
+*/
+func Mid(a int, b int) int {
+	checks.CheckAt(a <= b, "../../../samples/projects/lemma/main.go", 24, "precondition")
+	var __result_0 int
+	defer func() {
+		checks.CheckAt(__result_0 >= a, "../../../samples/projects/lemma/main.go", 25, "postcondition")
+	}()
+	defer func() {
+		checks.CheckAt(__result_0 <= b, "../../../samples/projects/lemma/main.go", 26, "postcondition")
+	}()
+	{
+		__result_0 = (a + b) / 2
+		return __result_0
+	}
+}
+
+func main() {
+	_ = IncNonNegative(10)
+	_ = Mid(2, 8)
+}

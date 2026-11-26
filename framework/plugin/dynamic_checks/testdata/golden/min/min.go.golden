@@ -10,8 +10,12 @@ ensures (\result <= a) && (\result <= b);
 */
 func min(a, b int) int {
 	var __result_0 int
-	defer checks.CheckAt(__result_0 == a || __result_0 == b, "../../../samples/projects/min/min.go", 5, "postcondition")
-	defer checks.CheckAt(__result_0 <= a && __result_0 <= b, "../../../samples/projects/min/min.go", 6, "postcondition")
+	defer func() {
+		checks.CheckAt(__result_0 == a || __result_0 == b, "../../../samples/projects/min/min.go", 6, "postcondition")
+	}()
+	defer func() {
+		checks.CheckAt(__result_0 <= a && __result_0 <= b, "../../../samples/projects/min/min.go", 7, "postcondition")
+	}()
 	if a < b {
 		{
 			__result_0 = a

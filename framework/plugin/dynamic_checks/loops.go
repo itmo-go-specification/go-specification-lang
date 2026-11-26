@@ -10,27 +10,104 @@ import (
 
 func applyLoopPass(astData *data.ASTData) bool {
 	modified := false
-
-	ast.Inspect(astData.File, func(n ast.Node) bool {
-		switch node := n.(type) {
-		case *ast.ForStmt:
-			info := astData.TryGetNodeInfo(node)
-			if info != nil && info.LoopSpec != nil {
-				if applyLoopSpecToFor(node, info.LoopSpec) {
-					modified = true
-				}
-			}
-		case *ast.RangeStmt:
-			info := astData.TryGetNodeInfo(node)
-			if info != nil && info.LoopSpec != nil {
-				if applyLoopSpecToRange(node, info.LoopSpec) {
-					modified = true
-				}
+	for _, decl := range astData.File.Decls {
+		if fn, ok := decl.(*ast.FuncDecl); ok && fn.Body != nil {
+			if instrumentLoopsInBlock(fn.Body, astData) {
+				modified = true
 			}
 		}
-		return true
-	})
+	}
+	return modified
+}
 
+func instrumentLoopsInBlock(block *ast.BlockStmt, astData *data.ASTData) bool {
+	modified := false
+	newList := make([]ast.Stmt, 0, len(block.List))
+	for _, stmt := range block.List {
+		if instrumentNestedLoopBlocks(stmt, astData) {
+			modified = true
+		}
+
+		var loopBody *ast.BlockStmt
+		var loopSpec *specir.LoopSpec
+		switch loop := stmt.(type) {
+		case *ast.ForStmt:
+			loopBody = loop.Body
+			if info := astData.TryGetNodeInfo(loop); info != nil {
+				loopSpec = info.LoopSpec
+			}
+		case *ast.RangeStmt:
+			loopBody = loop.Body
+			if info := astData.TryGetNodeInfo(loop); info != nil {
+				loopSpec = info.LoopSpec
+			}
+		}
+
+		if loopBody != nil && loopSpec != nil {
+			checks := generateLoopChecks(loopSpec, newContractConverter())
+			body, bodyModified := insertLoopChecks(loopBody, checks)
+			loopBody.List = body
+			if len(checks.beginStmts) > 0 {
+				newList = append(newList, checks.beginStmts...)
+				modified = true
+			}
+			modified = modified || bodyModified
+		}
+		newList = append(newList, stmt)
+	}
+	block.List = newList
+	return modified
+}
+
+func instrumentNestedLoopBlocks(stmt ast.Stmt, astData *data.ASTData) bool {
+	modified := false
+	process := func(block *ast.BlockStmt) {
+		if block != nil && instrumentLoopsInBlock(block, astData) {
+			modified = true
+		}
+	}
+
+	switch s := stmt.(type) {
+	case *ast.ForStmt:
+		process(s.Body)
+	case *ast.RangeStmt:
+		process(s.Body)
+	case *ast.BlockStmt:
+		process(s)
+	case *ast.IfStmt:
+		process(s.Body)
+		if elseBlock, ok := s.Else.(*ast.BlockStmt); ok {
+			process(elseBlock)
+		} else if elseIf, ok := s.Else.(*ast.IfStmt); ok {
+			if instrumentNestedLoopBlocks(elseIf, astData) {
+				modified = true
+			}
+		}
+	case *ast.SwitchStmt:
+		for _, item := range s.Body.List {
+			if clause, ok := item.(*ast.CaseClause); ok {
+				block := &ast.BlockStmt{List: clause.Body}
+				process(block)
+				clause.Body = block.List
+			}
+		}
+	case *ast.TypeSwitchStmt:
+		for _, item := range s.Body.List {
+			if clause, ok := item.(*ast.CaseClause); ok {
+				block := &ast.BlockStmt{List: clause.Body}
+				process(block)
+				clause.Body = block.List
+			}
+		}
+	case *ast.SelectStmt:
+		for _, item := range s.Body.List {
+			if clause, ok := item.(*ast.CommClause); ok {
+				block := &ast.BlockStmt{List: clause.Body}
+				process(block)
+				clause.Body = block.List
+			}
+		}
+	}
 	return modified
 }
 
@@ -96,7 +173,7 @@ func generateLoopChecks(spec *specir.LoopSpec, conv *contractConverter) *loopChe
 		result.endStmts = append(result.endStmts,
 			&ast.AssignStmt{
 				Lhs: []ast.Expr{&ast.Ident{Name: afterVarName}},
-				Tok: token.ASSIGN,
+				Tok: token.DEFINE,
 				Rhs: []ast.Expr{conv.Convert(spec.Variant)},
 			},
 			&ast.ExprStmt{
@@ -111,6 +188,11 @@ func generateLoopChecks(spec *specir.LoopSpec, conv *contractConverter) *loopChe
 					spec.StartPos,
 				),
 			},
+			&ast.AssignStmt{
+				Lhs: []ast.Expr{&ast.Ident{Name: beforeVarName}},
+				Tok: token.ASSIGN,
+				Rhs: []ast.Expr{&ast.Ident{Name: afterVarName}},
+			},
 		)
 	}
 
@@ -118,5 +200,63 @@ func generateLoopChecks(spec *specir.LoopSpec, conv *contractConverter) *loopChe
 }
 
 func insertLoopChecks(body *ast.BlockStmt, checks *loopChecks) (newList []ast.Stmt, modified bool) {
-	panic("NOT IMPLEMENTED")
+	if body == nil || len(checks.endStmts) == 0 {
+		if body == nil {
+			return nil, false
+		}
+		return body.List, false
+	}
+	newList = insertChecksBeforeContinue(body.List, checks.endStmts)
+	newList = append(newList, checks.endStmts...)
+	return newList, true
+}
+
+func insertChecksBeforeContinue(stmts []ast.Stmt, checks []ast.Stmt) []ast.Stmt {
+	result := make([]ast.Stmt, 0, len(stmts)+len(checks))
+	for _, stmt := range stmts {
+		switch s := stmt.(type) {
+		case *ast.BranchStmt:
+			if s.Tok == token.CONTINUE && s.Label == nil {
+				result = append(result, checks...)
+			}
+		case *ast.BlockStmt:
+			s.List = insertChecksBeforeContinue(s.List, checks)
+		case *ast.IfStmt:
+			s.Body.List = insertChecksBeforeContinue(s.Body.List, checks)
+			if elseBlock, ok := s.Else.(*ast.BlockStmt); ok {
+				elseBlock.List = insertChecksBeforeContinue(elseBlock.List, checks)
+			} else if elseIf, ok := s.Else.(*ast.IfStmt); ok {
+				insertChecksInIf(elseIf, checks)
+			}
+		case *ast.SwitchStmt:
+			insertChecksInCaseClauses(s.Body.List, checks)
+		case *ast.TypeSwitchStmt:
+			insertChecksInCaseClauses(s.Body.List, checks)
+		case *ast.SelectStmt:
+			for _, item := range s.Body.List {
+				if clause, ok := item.(*ast.CommClause); ok {
+					clause.Body = insertChecksBeforeContinue(clause.Body, checks)
+				}
+			}
+		}
+		result = append(result, stmt)
+	}
+	return result
+}
+
+func insertChecksInIf(stmt *ast.IfStmt, checks []ast.Stmt) {
+	stmt.Body.List = insertChecksBeforeContinue(stmt.Body.List, checks)
+	if elseBlock, ok := stmt.Else.(*ast.BlockStmt); ok {
+		elseBlock.List = insertChecksBeforeContinue(elseBlock.List, checks)
+	} else if elseIf, ok := stmt.Else.(*ast.IfStmt); ok {
+		insertChecksInIf(elseIf, checks)
+	}
+}
+
+func insertChecksInCaseClauses(items []ast.Stmt, checks []ast.Stmt) {
+	for _, item := range items {
+		if clause, ok := item.(*ast.CaseClause); ok {
+			clause.Body = insertChecksBeforeContinue(clause.Body, checks)
+		}
+	}
 }

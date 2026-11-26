@@ -30,6 +30,7 @@ type contractConverter struct {
 	oldOrder    []specir.Expr
 	counter     int
 	resultInfos []resultInfo // nil means use __result_N fallback
+	varTypes    map[string]ast.Expr
 }
 
 type oldVarInfo struct {
@@ -42,6 +43,41 @@ func newContractConverter() *contractConverter {
 	return &contractConverter{
 		oldVars:  make(map[specir.Expr]*oldVarInfo),
 		oldOrder: make([]specir.Expr, 0),
+		varTypes: make(map[string]ast.Expr),
+	}
+}
+
+func (c *contractConverter) SetFuncVarTypes(funcDecl *ast.FuncDecl) {
+	collect := func(fields *ast.FieldList) {
+		if fields == nil {
+			return
+		}
+		for _, field := range fields.List {
+			for _, name := range field.Names {
+				c.varTypes[name.Name] = field.Type
+			}
+		}
+	}
+	collect(funcDecl.Recv)
+	collect(funcDecl.Type.Params)
+	collect(funcDecl.Type.Results)
+}
+
+// TypeOf returns the Go type of a specification expression when it can be
+// derived from a function parameter or named result.
+func (c *contractConverter) TypeOf(expr specir.Expr) ast.Expr {
+	switch e := expr.(type) {
+	case *specir.ExprVar:
+		return c.varTypes[e.Name]
+	case *specir.ExprUnary:
+		return c.TypeOf(e.Expr)
+	case *specir.ExprBinary:
+		if typ := c.TypeOf(e.Left); typ != nil {
+			return typ
+		}
+		return c.TypeOf(e.Right)
+	default:
+		return nil
 	}
 }
 

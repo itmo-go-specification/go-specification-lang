@@ -34,6 +34,7 @@ func applyContractPass(astData *data.ASTData, strictMode bool) bool {
 
 func applyContractToFunc(funcDecl *ast.FuncDecl, contract *specir.FuncContract, strictMode bool) bool {
 	conv := newContractConverter()
+	conv.SetFuncVarTypes(funcDecl)
 
 	for _, ens := range contract.Ensures {
 		conv.CollectOld(ens.Expr)

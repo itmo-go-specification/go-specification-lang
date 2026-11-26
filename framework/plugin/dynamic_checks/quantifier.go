@@ -40,6 +40,27 @@ type rangeInfo struct {
 	body ast.Expr
 }
 
+type exprTypeResolver interface {
+	TypeOf(specir.Expr) ast.Expr
+}
+
+// convertRangeBounds makes an untyped logical integer bound use the Go type
+// of the opposite bound. This lets a loop compared with int32/int64/etc infer
+// the same type instead of defaulting its initializer to int.
+func convertRangeBounds(conv exprConverter, lo, hi specir.Expr) (ast.Expr, ast.Expr) {
+	convertedLo := conv.Convert(lo)
+	convertedHi := conv.Convert(hi)
+	resolver, ok := conv.(exprTypeResolver)
+	if !ok {
+		return convertedLo, convertedHi
+	}
+
+	if hiType := resolver.TypeOf(hi); hiType != nil && resolver.TypeOf(lo) == nil {
+		convertedLo = &ast.CallExpr{Fun: hiType, Args: []ast.Expr{convertedLo}}
+	}
+	return convertedLo, convertedHi
+}
+
 // extractForallRange expects Body of the form:
 //
 //	(guard) ==> body
@@ -55,9 +76,10 @@ func extractForallRange(conv exprConverter, body specir.Expr, varName string) *r
 	if lo == nil || hi == nil {
 		return nil
 	}
+	convertedLo, convertedHi := convertRangeBounds(conv, lo, hi)
 	return &rangeInfo{
-		lo:   conv.Convert(lo),
-		hi:   conv.Convert(hi),
+		lo:   convertedLo,
+		hi:   convertedHi,
 		body: conv.Convert(impl.Right),
 	}
 }
@@ -77,9 +99,10 @@ func extractExistsRange(conv exprConverter, body specir.Expr, varName string) *r
 	if lo == nil || hi == nil {
 		return nil
 	}
+	convertedLo, convertedHi := convertRangeBounds(conv, lo, hi)
 	return &rangeInfo{
-		lo:   conv.Convert(lo),
-		hi:   conv.Convert(hi),
+		lo:   convertedLo,
+		hi:   convertedHi,
 		body: conv.Convert(and.Right),
 	}
 }

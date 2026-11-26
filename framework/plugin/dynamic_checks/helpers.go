@@ -194,19 +194,20 @@ func replaceReturnsInNestedBlocks(stmt ast.Stmt, infos []resultInfo) {
 // Named:   { name0 = v0; name1 = v1; return }
 func createResultReturnBlock(ret *ast.ReturnStmt, infos []resultInfo) *ast.BlockStmt {
 	n := len(infos)
-	stmts := make([]ast.Stmt, 0, n+1)
+	stmts := make([]ast.Stmt, 0, 2)
 
-	// Assign each return value to its variable.
-	for i, val := range ret.Results {
-		if i >= n {
-			break
-		}
-		stmts = append(stmts, &ast.AssignStmt{
-			Lhs: []ast.Expr{&ast.Ident{Name: infos[i].name}},
-			Tok: token.ASSIGN,
-			Rhs: []ast.Expr{val},
-		})
+	// Keep the original return expressions in a single assignment. Besides
+	// preserving Go's simultaneous-assignment semantics (return b, a), this is
+	// required for a single call that yields all return values (return pair()).
+	lhs := make([]ast.Expr, n)
+	for i := range infos {
+		lhs[i] = &ast.Ident{Name: infos[i].name}
 	}
+	stmts = append(stmts, &ast.AssignStmt{
+		Lhs: lhs,
+		Tok: token.ASSIGN,
+		Rhs: ret.Results,
+	})
 
 	// Build the return statement.
 	allNamed := n > 0 && infos[0].isNamed

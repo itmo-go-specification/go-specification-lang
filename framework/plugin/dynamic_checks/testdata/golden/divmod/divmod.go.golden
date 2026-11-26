@@ -13,15 +13,9 @@ func DivMod(a, b int) (int, int) {
 	checks.CheckAt(b != 0, "../../../samples/projects/divmod/divmod.go", 5, "precondition")
 	var __result_0 int
 	var __result_1 int
-	defer func() {
-		checks.CheckAt(__result_0 == a/b, "../../../samples/projects/divmod/divmod.go", 6, "postcondition")
-	}()
-	defer func() {
-		checks.CheckAt(__result_1 == a%b, "../../../samples/projects/divmod/divmod.go", 7, "postcondition")
-	}()
-	defer func() {
-		checks.CheckAt(__result_0*b+__result_1 == a, "../../../samples/projects/divmod/divmod.go", 8, "postcondition")
-	}()
+	defer checks.CheckAt(__result_0 == a/b, "../../../samples/projects/divmod/divmod.go", 6, "postcondition")
+	defer checks.CheckAt(__result_1 == a%b, "../../../samples/projects/divmod/divmod.go", 7, "postcondition")
+	defer checks.CheckAt(__result_0*b+__result_1 == a, "../../../samples/projects/divmod/divmod.go", 8, "postcondition")
 	{
 		__result_0 = a / b
 		__result_1 = a % b

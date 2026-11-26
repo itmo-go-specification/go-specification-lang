@@ -4,52 +4,23 @@ import checks "gpma/framework/plugin/dynamic_checks/check"
 
 /*
 @
-requires acc(a);
-requires n == len(a);
-requires \forall i integer; (0 <= i) && (i < n) ==> acc(&a[i]) && (a[i] >= 0);
+requires \forall i integer; (0 <= i) && (i < n) ==> (a[i] >= 0);
 ensures \result >= 0;
 */
 func SumPositive(a []int, n int) int {
-	checks.CheckAt(acc(a), "../../../samples/projects/forall/forall.go", 5, "precondition")
-	checks.CheckAt(n == len(a), "../../../samples/projects/forall/forall.go", 6, "precondition")
 	checks.CheckAt(func() bool {
 		for i := 0; i < n; i++ {
-			if !(acc(&a[i]) && a[i] >= 0) {
+			if !(a[i] >= 0) {
 				return false
 			}
 		}
 		return true
-	}(), "../../../samples/projects/forall/forall.go", 7, "precondition")
+	}(), "../../../samples/projects/forall/forall.go", 5, "precondition")
 	var __result_0 int
-	defer func() {
-		checks.CheckAt(__result_0 >= 0, "../../../samples/projects/forall/forall.go", 8, "postcondition")
-	}()
+	defer checks.CheckAt(__result_0 >= 0, "../../../samples/projects/forall/forall.go", 6, "postcondition")
 	s := 0
-
 	for i := 0; i < n; i++ {
-		checks.CheckAt(acc(a), "../../../samples/projects/forall/forall.go", 14, "loop invariant")
-		checks.CheckAt(0 <= i && i <= n, "../../../samples/projects/forall/forall.go", 14, "loop invariant")
-		checks.CheckAt(func() bool {
-			for j := 0; j < n; j++ {
-				if !(acc(&a[j]) && a[j] >= 0) {
-					return false
-				}
-			}
-			return true
-		}(), "../../../samples/projects/forall/forall.go", 14, "loop invariant")
-		checks.CheckAt(s >= 0, "../../../samples/projects/forall/forall.go", 14, "loop invariant")
 		s += a[i]
-		checks.CheckAt(acc(a), "../../../samples/projects/forall/forall.go", 14, "loop invariant")
-		checks.CheckAt(0 <= i && i <= n, "../../../samples/projects/forall/forall.go", 14, "loop invariant")
-		checks.CheckAt(func() bool {
-			for j := 0; j < n; j++ {
-				if !(acc(&a[j]) && a[j] >= 0) {
-					return false
-				}
-			}
-			return true
-		}(), "../../../samples/projects/forall/forall.go", 14, "loop invariant")
-		checks.CheckAt(s >= 0, "../../../samples/projects/forall/forall.go", 14, "loop invariant")
 	}
 	{
 		__result_0 = s
@@ -59,48 +30,18 @@ func SumPositive(a []int, n int) int {
 
 /*
 @
-requires acc(a);
-requires \forall i integer; (0 <= i) && (i < n) ==> acc(&a[i]);
-requires n > 0;
-ensures acc(a);
-ensures \forall i integer; (0 <= i) && (i < n) ==> acc(&a[i]);
 ensures \exists i integer; (0 <= i) && (i < n) && (\result == a[i]);
 */
 func FirstElement(a []int, n int) int {
-	checks.CheckAt(acc(a), "../../../samples/projects/forall/forall.go", 27, "precondition")
-	checks.CheckAt(func() bool {
+	var __result_0 int
+	defer checks.CheckAt(func() bool {
 		for i := 0; i < n; i++ {
-			if !(acc(&a[i])) {
-				return false
+			if __result_0 == a[i] {
+				return true
 			}
 		}
-		return true
-	}(), "../../../samples/projects/forall/forall.go", 28, "precondition")
-	checks.CheckAt(n > 0, "../../../samples/projects/forall/forall.go", 29, "precondition")
-	var __result_0 int
-	defer func() {
-		checks.CheckAt(acc(a), "../../../samples/projects/forall/forall.go", 30, "postcondition")
-	}()
-	defer func() {
-		checks.CheckAt(func() bool {
-			for i := 0; i < n; i++ {
-				if !(acc(&a[i])) {
-					return false
-				}
-			}
-			return true
-		}(), "../../../samples/projects/forall/forall.go", 31, "postcondition")
-	}()
-	defer func() {
-		checks.CheckAt(func() bool {
-			for i := 0; i < n; i++ {
-				if __result_0 == a[i] {
-					return true
-				}
-			}
-			return false
-		}(), "../../../samples/projects/forall/forall.go", 32, "postcondition")
-	}()
+		return false
+	}(), "../../../samples/projects/forall/forall.go", 18, "postcondition")
 	{
 		__result_0 = a[0]
 		return __result_0

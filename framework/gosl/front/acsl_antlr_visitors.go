@@ -459,6 +459,22 @@ func (b *ACSLBuilder) VisitResult_n_term(ctx *acsl.Result_n_termContext) interfa
 	return &specir.ExprResult{BaseExpr: specir.BaseExpr{Span: b.blockSpan(ctx)}, Index: idx}
 }
 
+func (b *ACSLBuilder) VisitStructure_field_access_term(ctx *acsl.Structure_field_access_termContext) interface{} {
+	return &specir.ExprSelector{
+		BaseExpr: specir.BaseExpr{Span: b.blockSpan(ctx)},
+		Expr:     b.termToExpr(ctx.Term()),
+		Field:    ctx.Id().GetText(),
+	}
+}
+
+func (b *ACSLBuilder) VisitArray_access_term(ctx *acsl.Array_access_termContext) interface{} {
+	return &specir.ExprIndex{
+		BaseExpr: specir.BaseExpr{Span: b.blockSpan(ctx)},
+		Expr:     b.termToExpr(ctx.Term(0)),
+		Index:    b.termToExpr(ctx.Term(1)),
+	}
+}
+
 func (b *ACSLBuilder) VisitParentheses_pred(ctx *acsl.Parentheses_predContext) interface{} {
 	log.Debug("VisitParentheses_pred text:", ctx.GetText())
 	return b.predToExpr(ctx.Pred())

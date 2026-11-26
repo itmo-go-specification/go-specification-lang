@@ -42,6 +42,7 @@ type exprJSON struct {
 	Expr  *exprJSON   `json:"expr,omitempty"`
 	Left  *exprJSON   `json:"left,omitempty"`
 	Right *exprJSON   `json:"right,omitempty"`
+	Index *exprJSON   `json:"index,omitempty"`
 	Args  []*exprJSON `json:"args,omitempty"`
 
 	// Conditional
@@ -51,6 +52,9 @@ type exprJSON struct {
 
 	// Old
 	Inner *exprJSON `json:"inner,omitempty"`
+
+	// Result / selector / index
+	ResultIndex int `json:"resultIndex,omitempty"`
 
 	// Quantifier
 	QuantifierKind QuantifierKind `json:"quantifierKind,omitempty"`
@@ -79,6 +83,22 @@ func marshalExpr(e Expr) (*exprJSON, error) {
 			Span: t.GetSpan(),
 			Name: t.Name,
 		}, nil
+	case *ExprSelector:
+		base, err := marshalExpr(t.Expr)
+		if err != nil {
+			return nil, err
+		}
+		return &exprJSON{Kind: "selector", Span: t.GetSpan(), Expr: base, Name: t.Field}, nil
+	case *ExprIndex:
+		base, err := marshalExpr(t.Expr)
+		if err != nil {
+			return nil, err
+		}
+		index, err := marshalExpr(t.Index)
+		if err != nil {
+			return nil, err
+		}
+		return &exprJSON{Kind: "index", Span: t.GetSpan(), Expr: base, Index: index}, nil
 	case *ExprUnary:
 		inner, err := marshalExpr(t.Expr)
 		if err != nil {
@@ -143,8 +163,9 @@ func marshalExpr(e Expr) (*exprJSON, error) {
 		}, nil
 	case *ExprResult:
 		return &exprJSON{
-			Kind: "result",
-			Span: t.GetSpan(),
+			Kind:        "result",
+			Span:        t.GetSpan(),
+			ResultIndex: t.Index,
 		}, nil
 	case *ExprOld:
 		in, err := marshalExpr(t.Inner)
@@ -192,6 +213,22 @@ func unmarshalExpr(j *exprJSON) (Expr, error) {
 			BaseExpr: BaseExpr{Span: j.Span},
 			Name:     j.Name,
 		}, nil
+	case "selector":
+		base, err := unmarshalExpr(j.Expr)
+		if err != nil {
+			return nil, err
+		}
+		return &ExprSelector{BaseExpr: BaseExpr{Span: j.Span}, Expr: base, Field: j.Name}, nil
+	case "index":
+		base, err := unmarshalExpr(j.Expr)
+		if err != nil {
+			return nil, err
+		}
+		index, err := unmarshalExpr(j.Index)
+		if err != nil {
+			return nil, err
+		}
+		return &ExprIndex{BaseExpr: BaseExpr{Span: j.Span}, Expr: base, Index: index}, nil
 	case "unary":
 		inner, err := unmarshalExpr(j.Expr)
 		if err != nil {
@@ -253,6 +290,7 @@ func unmarshalExpr(j *exprJSON) (Expr, error) {
 	case "result":
 		return &ExprResult{
 			BaseExpr: BaseExpr{Span: j.Span},
+			Index:    j.ResultIndex,
 		}, nil
 	case "old":
 		in, err := unmarshalExpr(j.Inner)

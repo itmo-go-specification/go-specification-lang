@@ -107,6 +107,16 @@ func convertExpr(conv exprConverter, expr specir.Expr) ast.Expr {
 		return convertLiteral(e)
 	case *specir.ExprVar:
 		return &ast.Ident{Name: e.Name}
+	case *specir.ExprSelector:
+		return &ast.SelectorExpr{
+			X:   conv.Convert(e.Expr),
+			Sel: &ast.Ident{Name: e.Field},
+		}
+	case *specir.ExprIndex:
+		return &ast.IndexExpr{
+			X:     conv.Convert(e.Expr),
+			Index: conv.Convert(e.Index),
+		}
 	case *specir.ExprUnary:
 		return &ast.UnaryExpr{
 			Op: convertUnaryOp(e.Op),

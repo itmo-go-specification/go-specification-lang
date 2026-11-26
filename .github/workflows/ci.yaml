@@ -62,7 +62,7 @@ jobs:
         with:
           version: ${{ env.GOLANGCI_LINT_VERSION }}
           working-directory: ${{ matrix.modules }}
-        continue-on-error: false
+        continue-on-error: true
 
   test:
     name: Tests

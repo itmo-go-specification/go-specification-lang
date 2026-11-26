@@ -62,6 +62,7 @@ func DefaultSettings() Settings {
 		Timeout:  120 * time.Second,
 		LogLevel: "ERROR",
 
+		GobraBackend:        "silicon",
 		NoInformation:       false, // Disabled - not supported by Docker image
 		ParallelizeBranches: false,
 	}

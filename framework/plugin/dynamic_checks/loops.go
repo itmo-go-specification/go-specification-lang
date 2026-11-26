@@ -96,7 +96,7 @@ func generateLoopChecks(spec *specir.LoopSpec, conv *contractConverter) *loopChe
 		result.endStmts = append(result.endStmts,
 			&ast.AssignStmt{
 				Lhs: []ast.Expr{&ast.Ident{Name: afterVarName}},
-				Tok: token.ASSIGN,
+				Tok: token.DEFINE,
 				Rhs: []ast.Expr{conv.Convert(spec.Variant)},
 			},
 			&ast.ExprStmt{
@@ -118,5 +118,20 @@ func generateLoopChecks(spec *specir.LoopSpec, conv *contractConverter) *loopChe
 }
 
 func insertLoopChecks(body *ast.BlockStmt, checks *loopChecks) (newList []ast.Stmt, modified bool) {
-	panic("NOT IMPLEMENTED")
+	if body == nil || checks == nil {
+		return nil, false
+	}
+
+	modified = len(checks.beginStmts) > 0 || len(checks.endStmts) > 0
+	if !modified {
+		return body.List, false
+	}
+
+	newList = make([]ast.Stmt, 0,
+		len(checks.beginStmts)+len(body.List)+len(checks.endStmts))
+	newList = append(newList, checks.beginStmts...)
+	newList = append(newList, body.List...)
+	newList = append(newList, checks.endStmts...)
+
+	return newList, true
 }

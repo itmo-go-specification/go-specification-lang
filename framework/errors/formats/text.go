@@ -40,7 +40,10 @@ func (f *TextFormatter) FormatError(err *errors.Error, config errors.FormatterCo
 
 	position := fmt.Sprintf("%s:%d:%d", err.Position.File, err.Position.Line, err.Position.Column)
 
-	return fmt.Sprintf("[%s] %s: %s: %s", err.Source, position, severityLabel, err.Message), nil
+	if err.Source != "" {
+		return fmt.Sprintf("[%s] %s: %s: %s", err.Source, position, severityLabel, err.Message), nil
+	}
+	return fmt.Sprintf("%s: %s: %s", position, severityLabel, err.Message), nil
 }
 
 // severityLabel returns a human-readable label for the severity

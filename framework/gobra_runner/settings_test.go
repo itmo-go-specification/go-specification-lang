@@ -68,8 +68,8 @@ func TestDefaultSettings(t *testing.T) {
 		t.Errorf("DefaultSettings() LogLevel = %v, want %v", settings.LogLevel, "ERROR")
 	}
 
-	if !settings.NoInformation {
-		t.Errorf("DefaultSettings() NoInformation = %v, want %v", settings.NoInformation, true)
+	if settings.NoInformation {
+		t.Errorf("DefaultSettings() NoInformation = %v, want %v", settings.NoInformation, false)
 	}
 
 	if settings.ParallelizeBranches {

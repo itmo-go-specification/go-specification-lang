@@ -25,6 +25,9 @@ const (
 // LocationSet - assigns / loop assigns
 type LocationSet struct {
 	Kind LocationSetKind
+	// Specified distinguishes an explicit assigns clause from the zero value
+	// used when a contract has no assigns clause at all.
+	Specified bool `json:"specified,omitempty"`
 
 	// if Kind == LocSetNothing then Vars is empty. Ex: \nothinf
 	// Vars используется, если Kind == LocSetVars

@@ -79,18 +79,18 @@ func (b *ACSLBuilder) VisitLoop_assigns(ctx *acsl.Loop_assignsContext) interface
 	// \nothing
 	txt := ctx.GetText()
 	if strings.Contains(txt, `\nothing`) {
-		b.currLoop.Assigns = specir.LocationSet{Kind: specir.LocSetNothing}
+		b.currLoop.Assigns = specir.LocationSet{Kind: specir.LocSetNothing, Specified: true}
 		return nil
 	}
 
 	locs := ctx.Locations()
 	vars := collectIdentifiers(locs)
 	if len(vars) == 0 {
-		b.currLoop.Assigns = specir.LocationSet{Kind: specir.LocSetVars, Vars: []string{txt}}
+		b.currLoop.Assigns = specir.LocationSet{Kind: specir.LocSetVars, Specified: true, Vars: []string{txt}}
 		return nil
 	}
 
-	b.currLoop.Assigns = specir.LocationSet{Kind: specir.LocSetVars, Vars: unique(vars)}
+	b.currLoop.Assigns = specir.LocationSet{Kind: specir.LocSetVars, Specified: true, Vars: unique(vars)}
 	return nil
 }
 

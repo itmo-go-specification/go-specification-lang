@@ -304,7 +304,7 @@ func TestRunner_buildGobraArgs(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			runner := New(tt.settings)
-			args := runner.buildGobraArgs("test.go")
+			args := runner.buildGobraArgs("test.go", tt.settings)
 
 			if len(args) != len(tt.wantArgs) {
 				t.Errorf("buildGobraArgs() len = %d, want %d", len(args), len(tt.wantArgs))

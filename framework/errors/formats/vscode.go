@@ -100,11 +100,11 @@ func (f *VSCodeFormatter) errorToDiagnostic(err *errors.Error) (map[string]inter
 func (f *VSCodeFormatter) severityToVSCode(severity errors.Severity) int {
 	switch severity {
 	case errors.SeverityCritical:
-		return 0 // Error
+		return 1 // Error
 	case errors.SeverityWarning:
-		return 1 // Warning
+		return 2 // Warning
 	case errors.SeverityInfo:
-		return 2 // Info
+		return 3 // Info
 	default:
 		return 0 // Default to Error
 	}

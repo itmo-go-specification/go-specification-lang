@@ -51,15 +51,15 @@ func (p *DynamicChecksPlugin) Configure(params map[string]interface{}) error {
 func (p *DynamicChecksPlugin) Process(astData *data.ASTData) *plugin.PluginResult {
 	result := plugin.NewPluginResult()
 
-	addImport(astData.File)
+	logicModified := applyLogicPass(astData)
+	checksModified := applyAssertPass(astData)
+	checksModified = applyContractPass(astData, p.strictMode) || checksModified
+	checksModified = applyLoopPass(astData) || checksModified
 
-	if applyAssertPass(astData) {
-		result.WithASTModified().WithMapModified()
+	if checksModified {
+		addImport(astData.File)
 	}
-	if applyContractPass(astData, p.strictMode) {
-		result.WithASTModified().WithMapModified()
-	}
-	if applyLoopPass(astData) {
+	if logicModified || checksModified {
 		result.WithASTModified().WithMapModified()
 	}
 

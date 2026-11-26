@@ -174,6 +174,16 @@ ensures \result == Max(a, b);
 func max(a, b int) int { ... }
 ```
 
+Объявления `logic` и `predicate` преобразуются в обычные чистые Go-функции:
+
+```go
+/*@ logic successor(x integer) integer = x + 1; */
+/*@ predicate positive(x integer) = x > 0; */
+```
+
+Логические типы `integer`, `boolean` и `real` преобразуются соответственно в
+`int`, `bool` и `float64`.
+
 ### Квантификаторы
 
 Плагин поддерживает `\forall` и `\exists` с целочисленными переменными (`integer`).

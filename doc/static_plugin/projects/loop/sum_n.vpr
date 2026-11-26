@@ -1,0 +1,17 @@
+method sumN(n: Int) returns (res: Int)
+    requires n >= 0
+    ensures res == n * (n + 1) / 2
+{
+    var s: Int := 0
+    var i: Int := 0
+    
+    while (i < n)
+        invariant 0 <= i && i <= n
+        decreases n - i
+    {
+        i := i + 1
+        s := s + i
+    }
+    
+    res := s
+}

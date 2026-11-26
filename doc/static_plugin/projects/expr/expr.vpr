@@ -1,0 +1,108 @@
+// ExprTest covers all expression kinds supported by the dynamic_checks plugin:
+// arithmetic (+, -, *, /, %), comparisons (==, !=, <, <=, >, >=),
+// logical (&&, ||, !), unary (-), integer literals, \true/\false,
+// \old, \result, assert.
+
+method AddOne(x: Int) returns (res: Int)
+    requires x >= 0
+    ensures res == x + 1
+{
+    res := x + 1
+}
+
+method Diff(a: Int, b: Int) returns (res: Int)
+    requires b > a
+    ensures res == b - a
+{
+    res := b - a
+}
+
+method Double(n: Int) returns (res: Int)
+    requires n >= 0
+    ensures res == n * 2
+{
+    res := n * 2
+}
+
+method Divide(n: Int, d: Int) returns (res: Int)
+    requires d != 0
+    ensures res == n / d
+{
+    res := n / d
+}
+
+method Modulo(n: Int, d: Int) returns (res: Int)
+    requires d != 0
+    ensures res == n % d
+{
+    res := n % d
+}
+
+method Abs(x: Int) returns (res: Int)
+    requires x >= 0
+    ensures res >= 0
+{
+    if (x < 0) {
+        res := -x
+    }
+    
+    res := x
+}
+
+method Identity(x: Int) returns (res: Int)
+    requires !(x == 0)
+    ensures res != 0
+{
+    res := x
+}
+
+method Clamp(x: Int, lo: Int, hi: Int) returns (res: Int)
+    requires lo <= hi
+    ensures res >= lo
+    ensures res <= hi
+{
+    if (x < lo) {
+        res := lo
+    }
+    if (x > hi) {
+        res := hi
+    }
+    res := x
+}
+
+method Increment(n: Int) returns (res: Int)
+    requires n > 0
+    ensures res == old(n) + 1
+{
+    res := n + 1
+}
+
+method FortyTwo() returns (res: Int)
+    requires true
+    ensures res == 42
+{
+    res := 42
+}
+
+method TriangleNumber(n: Int) returns (res: Int)
+    requires n > 0
+    ensures res == n * (n + 1) / 2
+{
+    res := n * (n + 1) / 2
+}
+
+method AssertAdd(x: Int, y: Int) returns () {
+    assert x + y >= x
+}
+
+method AssertMul(x: Int) returns (res: Int) {
+    assert x * 2 == x + x
+}
+
+method AssertSub(x: Int) returns () {
+    assert x - x == 0
+}
+
+method AssertNeg(x: Int) returns () {
+    assert x != x + 1
+}

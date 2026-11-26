@@ -1,0 +1,12 @@
+field val: Int
+
+method swap(p: Ref, q: Ref)
+  requires acc(p.val) && acc(q.val)
+  ensures  acc(p.val) && acc(q.val)
+  ensures  p.val == old(q.val) && q.val == old(p.val)
+{
+  var save: Int
+  save := p.val
+  p.val := q.val
+  q.val := save
+}

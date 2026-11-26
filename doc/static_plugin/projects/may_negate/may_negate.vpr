@@ -1,0 +1,9 @@
+method may_negate(x: Int, mode: Bool) returns (res: Int)
+    requires mode == true || mode == false
+    ensures (!mode ==> res == x) && (mode ==> res == -x);
+{
+    if (mode) {
+        res := -x
+    }
+    res := x
+}

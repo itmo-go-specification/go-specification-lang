@@ -115,6 +115,32 @@ type ExprConditional struct {
 
 func (*ExprConditional) exprNode() {}
 
+// ExprSet is a finite set literal such as {1, 2, 3} or \empty.
+type ExprSet struct {
+	BaseExpr
+	Elements []Expr
+}
+
+func (*ExprSet) exprNode() {}
+
+// ExprSetMembership represents element \in set.
+type ExprSetMembership struct {
+	BaseExpr
+	Element Expr
+	Set     Expr
+}
+
+func (*ExprSetMembership) exprNode() {}
+
+// ExprSetSubset represents \subset(left, right).
+type ExprSetSubset struct {
+	BaseExpr
+	Left  Expr
+	Right Expr
+}
+
+func (*ExprSetSubset) exprNode() {}
+
 // ExprResult - \result or \result_N (for multi-return functions).
 // Index 0 corresponds to \result (first / only return value).
 // Index N corresponds to \result_N (the N-th return value, 0-based).

@@ -21,6 +21,16 @@ func Walk(expr Expr, visitor Visitor) {
 		Walk(e.Cond, visitor)
 		Walk(e.Then, visitor)
 		Walk(e.Else, visitor)
+	case *ExprSet:
+		for _, element := range e.Elements {
+			Walk(element, visitor)
+		}
+	case *ExprSetMembership:
+		Walk(e.Element, visitor)
+		Walk(e.Set, visitor)
+	case *ExprSetSubset:
+		Walk(e.Left, visitor)
+		Walk(e.Right, visitor)
 	case *ExprOld:
 		Walk(e.Inner, visitor)
 	case *ExprQuantifier:

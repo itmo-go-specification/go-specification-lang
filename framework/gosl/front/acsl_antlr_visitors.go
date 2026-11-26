@@ -375,6 +375,55 @@ func (b *ACSLBuilder) termToExpr(t acsl.ITermContext) specir.Expr {
 	return &specir.ExprVar{BaseExpr: specir.BaseExpr{Span: b.blockSpan(t)}, Name: t.GetText()}
 }
 
+func (b *ACSLBuilder) tsetToExpr(set acsl.ITsetContext) specir.Expr {
+	if set == nil {
+		return nil
+	}
+	if expr, ok := b.Visit(set).(specir.Expr); ok {
+		return expr
+	}
+	return &specir.ExprVar{BaseExpr: specir.BaseExpr{Span: b.blockSpan(set)}, Name: set.GetText()}
+}
+
+func (b *ACSLBuilder) VisitTset_term(ctx *acsl.Tset_termContext) interface{} {
+	return b.termToExpr(ctx.Term())
+}
+
+func (b *ACSLBuilder) VisitTset_empty(ctx *acsl.Tset_emptyContext) interface{} {
+	return &specir.ExprSet{BaseExpr: specir.BaseExpr{Span: b.blockSpan(ctx)}}
+}
+
+func (b *ACSLBuilder) VisitTset_set(ctx *acsl.Tset_setContext) interface{} {
+	elements := make([]specir.Expr, 0, len(ctx.AllTset()))
+	for _, element := range ctx.AllTset() {
+		elements = append(elements, b.tsetToExpr(element))
+	}
+	return &specir.ExprSet{
+		BaseExpr: specir.BaseExpr{Span: b.blockSpan(ctx)},
+		Elements: elements,
+	}
+}
+
+func (b *ACSLBuilder) VisitSet_membership_pred(ctx *acsl.Set_membership_predContext) interface{} {
+	return &specir.ExprSetMembership{
+		BaseExpr: specir.BaseExpr{Span: b.blockSpan(ctx)},
+		Element:  b.termToExpr(ctx.Term()),
+		Set:      b.tsetToExpr(ctx.Tset()),
+	}
+}
+
+func (b *ACSLBuilder) VisitSet_inclusion_pred(ctx *acsl.Set_inclusion_predContext) interface{} {
+	sets := ctx.AllTset()
+	if len(sets) != 2 {
+		return nil
+	}
+	return &specir.ExprSetSubset{
+		BaseExpr: specir.BaseExpr{Span: b.blockSpan(ctx)},
+		Left:     b.tsetToExpr(sets[0]),
+		Right:    b.tsetToExpr(sets[1]),
+	}
+}
+
 func (b *ACSLBuilder) VisitInternal_term(ctx *acsl.Internal_termContext) interface{} {
 	log.Debug("VisitInternal_term text:", ctx.GetText())
 	// "id" / literal / ...

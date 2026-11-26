@@ -353,6 +353,36 @@ func (b *ACSLBuilder) VisitTernary_condition_pred(ctx *acsl.Ternary_condition_pr
 	}
 }
 
+func (b *ACSLBuilder) VisitTernary_condition_term_pred(ctx *acsl.Ternary_condition_term_predContext) interface{} {
+	ps := ctx.AllPred()
+	if ctx.Term() == nil || len(ps) != 2 {
+		return &specir.ExprVar{BaseExpr: specir.BaseExpr{Span: b.blockSpan(ctx)}, Name: ctx.GetText()}
+	}
+	return &specir.ExprConditional{
+		BaseExpr: specir.BaseExpr{Span: b.blockSpan(ctx)},
+		Cond:     b.termToExpr(ctx.Term()),
+		Then:     b.predToExpr(ps[0]),
+		Else:     b.predToExpr(ps[1]),
+	}
+}
+
+func (b *ACSLBuilder) VisitTernary_cond_term(ctx *acsl.Ternary_cond_termContext) interface{} {
+	terms := ctx.AllTerm()
+	if len(terms) != 3 {
+		return &specir.ExprVar{BaseExpr: specir.BaseExpr{Span: b.blockSpan(ctx)}, Name: ctx.GetText()}
+	}
+	return &specir.ExprConditional{
+		BaseExpr: specir.BaseExpr{Span: b.blockSpan(ctx)},
+		Cond:     b.termToExpr(terms[0]),
+		Then:     b.termToExpr(terms[1]),
+		Else:     b.termToExpr(terms[2]),
+	}
+}
+
+func (b *ACSLBuilder) VisitParentheses_term(ctx *acsl.Parentheses_termContext) interface{} {
+	return b.termToExpr(ctx.Term())
+}
+
 // \old(pred)
 func (b *ACSLBuilder) VisitOld_pred(ctx *acsl.Old_predContext) interface{} {
 	log.Debug("VisitOld_pred text:", ctx.GetText())

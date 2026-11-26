@@ -88,8 +88,6 @@ func extractExistsRange(conv exprConverter, body specir.Expr, varName string) *r
 //
 //	lo <= i && i < hi
 //	lo <= i && i <= hi   (hi becomes hi+1 conceptually — we use OpLe → OpLt adjustment)
-//	i < hi               (lo defaults to 0)
-//	i <= hi              (lo defaults to 0, hi+1 conceptually)
 //
 // Returns (lo, hi) as IR Expr nodes, or (nil, nil) if the pattern is not matched.
 func extractBounds(guard specir.Expr, varName string) (lo, hi specir.Expr) {
@@ -106,12 +104,6 @@ func extractBounds(guard specir.Expr, varName string) (lo, hi specir.Expr) {
 		if loExpr != nil && hiExpr != nil {
 			return loExpr, hiExpr
 		}
-	}
-
-	// Case: i < hi  (no lower bound — default to 0)
-	if hiExpr := extractUpperBound(guard, varName); hiExpr != nil {
-		zero := &specir.ExprLiteral{Kind: specir.LitInteger, Int: 0}
-		return zero, hiExpr
 	}
 
 	return nil, nil
@@ -174,7 +166,7 @@ func convertForall(conv exprConverter, q *specir.ExprQuantifier, varName string)
 	ri := extractForallRange(conv, q.Body, varName)
 	if ri == nil {
 		panic(fmt.Sprintf(
-			`\forall: cannot infer loop range for variable %q. `+
+			`\forall: cannot infer loop range for variable %q: explicit lower and upper bounds are required. `+
 				`Body must have the form "(lo <= %s && %s < hi) ==> P(%s)"`,
 			varName, varName, varName, varName,
 		))
@@ -194,7 +186,7 @@ func convertExists(conv exprConverter, q *specir.ExprQuantifier, varName string)
 	ri := extractExistsRange(conv, q.Body, varName)
 	if ri == nil {
 		panic(fmt.Sprintf(
-			`\exists: cannot infer loop range for variable %q. `+
+			`\exists: cannot infer loop range for variable %q: explicit lower and upper bounds are required. `+
 				`Body must have the form "(lo <= %s && %s < hi) && P(%s)"`,
 			varName, varName, varName, varName,
 		))

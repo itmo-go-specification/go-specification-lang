@@ -164,6 +164,14 @@ func (b *ACSLBuilder) VisitLogical_false_pred(ctx *acsl.Logical_false_predContex
 	}
 }
 
+func (b *ACSLBuilder) VisitVariable_pred(ctx *acsl.Variable_predContext) interface{} {
+	name, _ := polyIDName(ctx.Poly_id())
+	return &specir.ExprVar{
+		BaseExpr: specir.BaseExpr{Span: b.blockSpan(ctx)},
+		Name:     name,
+	}
+}
+
 // binary op
 func (b *ACSLBuilder) VisitBinary_op_term(ctx *acsl.Binary_op_termContext) interface{} {
 	log.Debug("VisitBinary_op_term text:", ctx.GetText())
@@ -281,6 +289,32 @@ func (b *ACSLBuilder) VisitDisjunction_pred(ctx *acsl.Disjunction_predContext) i
 	return &specir.ExprBinary{
 		BaseExpr: specir.BaseExpr{Span: b.blockSpan(ctx)},
 		Op:       specir.OpOr,
+		Left:     b.predToExpr(ps[0]),
+		Right:    b.predToExpr(ps[1]),
+	}
+}
+
+func (b *ACSLBuilder) VisitExclusive_or_pred(ctx *acsl.Exclusive_or_predContext) interface{} {
+	ps := ctx.AllPred()
+	if len(ps) < 2 {
+		return b.predToExpr(ctx.Pred(0))
+	}
+	return &specir.ExprBinary{
+		BaseExpr: specir.BaseExpr{Span: b.blockSpan(ctx)},
+		Op:       specir.OpXor,
+		Left:     b.predToExpr(ps[0]),
+		Right:    b.predToExpr(ps[1]),
+	}
+}
+
+func (b *ACSLBuilder) VisitPredicate_comparison_pred(ctx *acsl.Predicate_comparison_predContext) interface{} {
+	ps := ctx.AllPred()
+	if len(ps) < 2 {
+		return b.predToExpr(ctx.Pred(0))
+	}
+	return &specir.ExprBinary{
+		BaseExpr: specir.BaseExpr{Span: b.blockSpan(ctx)},
+		Op:       relOpToBinary(ctx.GetOp().GetText()),
 		Left:     b.predToExpr(ps[0]),
 		Right:    b.predToExpr(ps[1]),
 	}

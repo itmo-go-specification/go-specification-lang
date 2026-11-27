@@ -109,6 +109,7 @@ rel_op
 pred
     : '\\true'                          # logical_true_pred
     | '\\false'                         # logical_false_pred
+    | poly_id                            # variable_pred
     | term (rel_op term)+               # comparison_pred
     | ident '(' term (',' term)* ')'    # predicate_application_pred
     | '(' pred ')'                      # parentheses_pred
@@ -118,6 +119,7 @@ pred
     | pred '<==>' pred                  # equivalence_pred
     | '!' pred                          # negation_pred
     | pred '^^' pred                    # exclusive_or_pred
+    | pred op=('==' | '!=') pred        # predicate_comparison_pred
     | term '?' pred ':' pred            # ternary_condition_term_pred
     | pred '?' pred ':' pred            # ternary_condition_pred
     | '\\let' id '=' term ';' pred      # local_binding_pred

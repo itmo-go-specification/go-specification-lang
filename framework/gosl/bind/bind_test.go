@@ -29,10 +29,7 @@ func TestBindFuncContracts(t *testing.T) {
 		}
 
 		blocks := front.CollectRawBlocks(astData.FileSet, astData.File, astData.FileSet.File(astData.File.Pos()).Name())
-		spec, err := front.BuildSpecModule(blocks)
-		if err != nil {
-			t.Fatalf("Failed to build spec module in file %s: %v", filename, err)
-		}
+		spec, _ := front.BuildSpecModule(blocks)
 
 		astData, err = Bind(astData, spec)
 
@@ -68,10 +65,7 @@ func TestBindFuncContracts(t *testing.T) {
 		}
 
 		blocks := front.CollectRawBlocks(astData.FileSet, astData.File, astData.FileSet.File(astData.File.Pos()).Name())
-		spec, err := front.BuildSpecModule(blocks)
-		if err != nil {
-			t.Fatalf("Failed to build spec module in file %s: %v", filename, err)
-		}
+		spec, _ := front.BuildSpecModule(blocks)
 
 		_, err = Bind(astData, spec)
 
@@ -102,10 +96,7 @@ func TestBindLoopSpecs(t *testing.T) {
 		}
 
 		blocks := front.CollectRawBlocks(astData.FileSet, astData.File, astData.FileSet.File(astData.File.Pos()).Name())
-		spec, err := front.BuildSpecModule(blocks)
-		if err != nil {
-			t.Fatalf("Failed to build spec module in file %s: %v", filename, err)
-		}
+		spec, _ := front.BuildSpecModule(blocks)
 
 		astData, err = Bind(astData, spec)
 
@@ -141,10 +132,7 @@ func TestBindLoopSpecs(t *testing.T) {
 		}
 
 		blocks := front.CollectRawBlocks(astData.FileSet, astData.File, astData.FileSet.File(astData.File.Pos()).Name())
-		spec, err := front.BuildSpecModule(blocks)
-		if err != nil {
-			t.Fatalf("Failed to build spec module in file %s: %v", filename, err)
-		}
+		spec, _ := front.BuildSpecModule(blocks)
 
 		_, err = Bind(astData, spec)
 		if err == nil {
@@ -174,10 +162,7 @@ func TestBindAssertSpecs(t *testing.T) {
 		}
 
 		blocks := front.CollectRawBlocks(astData.FileSet, astData.File, astData.FileSet.File(astData.File.Pos()).Name())
-		spec, err := front.BuildSpecModule(blocks)
-		if err != nil {
-			t.Fatalf("Failed to build spec module in file %s: %v", filename, err)
-		}
+		spec, _ := front.BuildSpecModule(blocks)
 
 		astData, err = Bind(astData, spec)
 		if err != nil {

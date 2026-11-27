@@ -35,9 +35,10 @@ func convertQuantifier(conv exprConverter, q *specir.ExprQuantifier) ast.Expr {
 
 // rangeInfo holds the extracted loop bounds and the inner body predicate.
 type rangeInfo struct {
-	lo   ast.Expr
-	hi   ast.Expr
-	body ast.Expr
+	lo        ast.Expr
+	hi        ast.Expr
+	inclusive bool
+	body      ast.Expr
 }
 
 // extractForallRange expects Body of the form:
@@ -51,14 +52,15 @@ func extractForallRange(conv exprConverter, body specir.Expr, varName string) *r
 	if !ok || impl.Op != specir.OpImplies {
 		return nil
 	}
-	lo, hi := extractBounds(impl.Left, varName)
+	lo, hi, inclusive := extractBounds(impl.Left, varName)
 	if lo == nil || hi == nil {
 		return nil
 	}
 	return &rangeInfo{
-		lo:   conv.Convert(lo),
-		hi:   conv.Convert(hi),
-		body: conv.Convert(impl.Right),
+		lo:        conv.Convert(lo),
+		hi:        conv.Convert(hi),
+		inclusive: inclusive,
+		body:      conv.Convert(impl.Right),
 	}
 }
 
@@ -73,48 +75,49 @@ func extractExistsRange(conv exprConverter, body specir.Expr, varName string) *r
 	if !ok || and.Op != specir.OpAnd {
 		return nil
 	}
-	lo, hi := extractBounds(and.Left, varName)
+	lo, hi, inclusive := extractBounds(and.Left, varName)
 	if lo == nil || hi == nil {
 		return nil
 	}
 	return &rangeInfo{
-		lo:   conv.Convert(lo),
-		hi:   conv.Convert(hi),
-		body: conv.Convert(and.Right),
+		lo:        conv.Convert(lo),
+		hi:        conv.Convert(hi),
+		inclusive: inclusive,
+		body:      conv.Convert(and.Right),
 	}
 }
 
 // extractBounds tries to parse a guard expression of the form:
 //
 //	lo <= i && i < hi
-//	lo <= i && i <= hi   (hi becomes hi+1 conceptually — we use OpLe → OpLt adjustment)
+//	lo <= i && i <= hi
 //	i < hi               (lo defaults to 0)
-//	i <= hi              (lo defaults to 0, hi+1 conceptually)
+//	i <= hi              (lo defaults to 0)
 //
-// Returns (lo, hi) as IR Expr nodes, or (nil, nil) if the pattern is not matched.
-func extractBounds(guard specir.Expr, varName string) (lo, hi specir.Expr) {
+// Returns (lo, hi, inclusive) as IR Expr nodes, or nil bounds if the pattern is not matched.
+func extractBounds(guard specir.Expr, varName string) (lo, hi specir.Expr, inclusive bool) {
 	// Case: lo <= i && i < hi  OR  lo <= i && i <= hi
 	if and, ok := guard.(*specir.ExprBinary); ok && and.Op == specir.OpAnd {
 		loExpr := extractLowerBound(and.Left, varName)
-		hiExpr := extractUpperBound(and.Right, varName)
+		hiExpr, inclusive := extractUpperBound(and.Right, varName)
 		if loExpr != nil && hiExpr != nil {
-			return loExpr, hiExpr
+			return loExpr, hiExpr, inclusive
 		}
 		// Try reversed order: i < hi && lo <= i
 		loExpr = extractLowerBound(and.Right, varName)
-		hiExpr = extractUpperBound(and.Left, varName)
+		hiExpr, inclusive = extractUpperBound(and.Left, varName)
 		if loExpr != nil && hiExpr != nil {
-			return loExpr, hiExpr
+			return loExpr, hiExpr, inclusive
 		}
 	}
 
 	// Case: i < hi  (no lower bound — default to 0)
-	if hiExpr := extractUpperBound(guard, varName); hiExpr != nil {
+	if hiExpr, inclusive := extractUpperBound(guard, varName); hiExpr != nil {
 		zero := &specir.ExprLiteral{Kind: specir.LitInteger, Int: 0}
-		return zero, hiExpr
+		return zero, hiExpr, inclusive
 	}
 
-	return nil, nil
+	return nil, nil, false
 }
 
 // extractLowerBound matches  lo <= i  (i.e. ExprBinary{OpLe, lo, ExprVar{varName}}).
@@ -131,30 +134,24 @@ func extractLowerBound(expr specir.Expr, varName string) specir.Expr {
 	return nil
 }
 
-// extractUpperBound matches  i < hi  or  i <= hi.
-// For  i <= hi  we wrap hi in  hi+1  so the generated for-loop uses strict <.
-func extractUpperBound(expr specir.Expr, varName string) specir.Expr {
+// extractUpperBound matches i < hi or i <= hi and reports whether the bound is inclusive.
+func extractUpperBound(expr specir.Expr, varName string) (specir.Expr, bool) {
 	bin, ok := expr.(*specir.ExprBinary)
 	if !ok {
-		return nil
+		return nil, false
 	}
 	switch bin.Op {
 	case specir.OpLt:
 		// i < hi
 		if isVar(bin.Left, varName) {
-			return bin.Right
+			return bin.Right, false
 		}
 	case specir.OpLe:
-		// i <= hi  →  treat upper bound as hi+1
 		if isVar(bin.Left, varName) {
-			return &specir.ExprBinary{
-				Op:    specir.OpAdd,
-				Left:  bin.Right,
-				Right: &specir.ExprLiteral{Kind: specir.LitInteger, Int: 1},
-			}
+			return bin.Right, true
 		}
 	}
-	return nil
+	return nil, false
 }
 
 func isVar(expr specir.Expr, name string) bool {
@@ -179,7 +176,7 @@ func convertForall(conv exprConverter, q *specir.ExprQuantifier, varName string)
 			varName, varName, varName, varName,
 		))
 	}
-	return buildQuantifierIIFE(varName, ri.lo, ri.hi, ri.body, true)
+	return buildQuantifierIIFE(varName, ri.lo, ri.hi, ri.inclusive, ri.body, true)
 }
 
 // convertExists generates:
@@ -199,7 +196,7 @@ func convertExists(conv exprConverter, q *specir.ExprQuantifier, varName string)
 			varName, varName, varName, varName,
 		))
 	}
-	return buildQuantifierIIFE(varName, ri.lo, ri.hi, ri.body, false)
+	return buildQuantifierIIFE(varName, ri.lo, ri.hi, ri.inclusive, ri.body, false)
 }
 
 // buildQuantifierIIFE builds the IIFE for both forall and exists.
@@ -211,14 +208,14 @@ func convertExists(conv exprConverter, q *specir.ExprQuantifier, varName string)
 // forall=false (exists):
 //
 //	func() bool { for i:=lo; i<hi; i++ { if cond { return true } }; return false }()
-func buildQuantifierIIFE(varName string, lo, hi, cond ast.Expr, forall bool) ast.Expr {
+func buildQuantifierIIFE(varName string, lo, hi ast.Expr, inclusive bool, cond ast.Expr, forall bool) ast.Expr {
 	iVar := &ast.Ident{Name: varName}
 
-	// Loop condition: i < hi
-	loopCond := &ast.BinaryExpr{X: iVar, Op: token.LSS, Y: hi}
-
-	// Loop post: i++
-	loopPost := &ast.IncDecStmt{X: iVar, Tok: token.INC}
+	comparison := token.LSS
+	if inclusive {
+		comparison = token.LEQ
+	}
+	loopCond := &ast.BinaryExpr{X: iVar, Op: comparison, Y: hi}
 
 	// if-condition and early-return value
 	var ifCond ast.Expr
@@ -248,6 +245,19 @@ func buildQuantifierIIFE(varName string, lo, hi, cond ast.Expr, forall bool) ast
 				},
 			},
 		},
+	}
+	var loopPost ast.Stmt = &ast.IncDecStmt{X: iVar, Tok: token.INC}
+	if inclusive {
+		// Avoid incrementing the maximum integer value. The explicit break keeps
+		// an inclusive range finite without evaluating hi + 1.
+		forBody.List = append(forBody.List,
+			&ast.IfStmt{
+				Cond: &ast.BinaryExpr{X: iVar, Op: token.EQL, Y: hi},
+				Body: &ast.BlockStmt{List: []ast.Stmt{&ast.BranchStmt{Tok: token.BREAK}}},
+			},
+			&ast.IncDecStmt{X: iVar, Tok: token.INC},
+		)
+		loopPost = nil
 	}
 
 	forStmt := &ast.ForStmt{

@@ -34,6 +34,7 @@ func applyContractPass(astData *data.ASTData, strictMode bool) bool {
 
 func applyContractToFunc(funcDecl *ast.FuncDecl, contract *specir.FuncContract, strictMode bool) bool {
 	conv := newContractConverter()
+	conv.SetFuncVarTypes(funcDecl)
 
 	for _, ens := range contract.Ensures {
 		conv.CollectOld(ens.Expr)
@@ -81,7 +82,7 @@ func applyContractToFunc(funcDecl *ast.FuncDecl, contract *specir.FuncContract, 
 		newStmts = append(newStmts, &ast.AssignStmt{
 			Lhs: []ast.Expr{&ast.Ident{Name: oldInfo.name}},
 			Tok: token.DEFINE,
-			Rhs: []ast.Expr{conv.Convert(oldInfo.expr)},
+			Rhs: []ast.Expr{conv.OldSnapshotExpr(oldInfo)},
 		})
 		oldInfo.isDeclared = true
 	}

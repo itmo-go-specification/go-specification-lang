@@ -210,10 +210,9 @@ func (g *GobraGenerator) WriteString(s string) int {
 	return len(s)
 }
 
-// WriteByte writes a byte to the builder and returns 1
-func (g *GobraGenerator) WriteByte(b byte) int {
-	g.builder.WriteByte(b)
-	return 1
+// WriteByte writes a byte to the builder.
+func (g *GobraGenerator) WriteByte(b byte) error {
+	return g.builder.WriteByte(b)
 }
 
 // CurrentPosition returns the current position in the generated code

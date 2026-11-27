@@ -2,7 +2,6 @@ package front
 
 import (
 	acsl "gpma/framework/gosl/front/generated/grammar/acsl"
-	grammar "gpma/framework/gosl/front/generated/grammar/acsl"
 	specir "gpma/framework/gosl/ir"
 	"strconv"
 	"strings"
@@ -494,7 +493,7 @@ func (b *ACSLBuilder) VisitUnary_op_term(ctx *acsl.Unary_op_termContext) interfa
 	}
 }
 
-func (b *ACSLBuilder) VisitLiteral_term(ctx *grammar.Literal_termContext) interface{} {
+func (b *ACSLBuilder) VisitLiteral_term(ctx *acsl.Literal_termContext) interface{} {
 	if ctx == nil {
 		return nil
 	}
@@ -512,21 +511,21 @@ func (b *ACSLBuilder) VisitLiteral_term(ctx *grammar.Literal_termContext) interf
 
 	switch x := lit.(type) {
 
-	case *grammar.True_constantContext:
+	case *acsl.True_constantContext:
 		return &specir.ExprLiteral{
 			BaseExpr: specir.BaseExpr{Span: b.blockSpan(ctx)},
 			Kind:     specir.LitBool,
 			Bool:     true,
 		}
 
-	case *grammar.False_constantContext:
+	case *acsl.False_constantContext:
 		return &specir.ExprLiteral{
 			BaseExpr: specir.BaseExpr{Span: b.blockSpan(ctx)},
 			Kind:     specir.LitBool,
 			Bool:     false,
 		}
 
-	case *grammar.String_constantContext:
+	case *acsl.String_constantContext:
 		raw := ""
 		if s := x.String_(); s != nil {
 			raw = s.GetText()
@@ -546,7 +545,7 @@ func (b *ACSLBuilder) VisitLiteral_term(ctx *grammar.Literal_termContext) interf
 			Str:      unq,
 		}
 
-	case *grammar.Trivial_constantContext:
+	case *acsl.Trivial_constantContext:
 		// Constant()
 		raw := ""
 		if c := x.Constant(); c != nil {

@@ -39,7 +39,7 @@ func Bind(astData *data.ASTData, spec *specir.SpecModule) (*data.ASTData, error)
 		})
 
 		if nearestNode == len(nodes) {
-			return nil, fmt.Errorf("Not matched node for spec at %s:%d", specSection.StartPos.File, specSection.StartPos.Line)
+			return nil, fmt.Errorf("not matched node for spec at %s:%d", specSection.StartPos.File, specSection.StartPos.Line)
 		}
 
 		if funcDecl, ok := nodes[nearestNode].(*ast.FuncDecl); ok {
@@ -47,7 +47,7 @@ func Bind(astData *data.ASTData, spec *specir.SpecModule) (*data.ASTData, error)
 			node_info.FuncContract = specSection
 			astData.NodeInfo[funcDecl] = node_info
 		} else {
-			return nil, fmt.Errorf("Matched node for spec at %s:%d is not a function", specSection.StartPos.File, specSection.StartPos.Line)
+			return nil, fmt.Errorf("matched node for spec at %s:%d is not a function", specSection.StartPos.File, specSection.StartPos.Line)
 		}
 	}
 
@@ -59,7 +59,7 @@ func Bind(astData *data.ASTData, spec *specir.SpecModule) (*data.ASTData, error)
 		})
 
 		if nearestNode == len(nodes) {
-			return nil, fmt.Errorf("Not matched node for spec at %s:%d", specSection.StartPos.File, specSection.StartPos.Line)
+			return nil, fmt.Errorf("not matched node for spec at %s:%d", specSection.StartPos.File, specSection.StartPos.Line)
 		}
 
 		if forStmt, ok := nodes[nearestNode].(*ast.ForStmt); ok {
@@ -67,7 +67,7 @@ func Bind(astData *data.ASTData, spec *specir.SpecModule) (*data.ASTData, error)
 			node_info.LoopSpec = specSection
 			astData.NodeInfo[forStmt] = node_info
 		} else {
-			return nil, fmt.Errorf("Matched node for spec at %s:%d is not a loop", specSection.StartPos.File, specSection.StartPos.Line)
+			return nil, fmt.Errorf("matched node for spec at %s:%d is not a loop", specSection.StartPos.File, specSection.StartPos.Line)
 		}
 	}
 
@@ -78,7 +78,7 @@ func Bind(astData *data.ASTData, spec *specir.SpecModule) (*data.ASTData, error)
 		})
 
 		if nearestNode == len(nodes) {
-			return nil, fmt.Errorf("Not matched node for spec at %s:%d", assertSection.StartPos.File, assertSection.StartPos.Line)
+			return nil, fmt.Errorf("not matched node for spec at %s:%d", assertSection.StartPos.File, assertSection.StartPos.Line)
 		}
 
 		stmt := nodes[nearestNode]

@@ -89,7 +89,9 @@ func logToFile(msg, path string) error {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+	defer func() {
+		_ = file.Close()
+	}()
 
 	logMsg := fmt.Sprintf("%s: %s\n", getTimestamp(), msg)
 	if _, err := file.WriteString(logMsg); err != nil {

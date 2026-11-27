@@ -303,7 +303,9 @@ func TestNewErrorReporter(t *testing.T) {
 			}
 
 			if !tt.wantErr && reporter != nil {
-				reporter.Close()
+				if err := reporter.Close(); err != nil {
+					t.Errorf("failed to close reporter: %v", err)
+				}
 			}
 		})
 	}

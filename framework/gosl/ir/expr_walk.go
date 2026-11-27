@@ -8,6 +8,11 @@ func Walk(expr Expr, visitor Visitor) {
 	}
 
 	switch e := expr.(type) {
+	case *ExprSelector:
+		Walk(e.Expr, visitor)
+	case *ExprIndex:
+		Walk(e.Expr, visitor)
+		Walk(e.Index, visitor)
 	case *ExprUnary:
 		Walk(e.Expr, visitor)
 	case *ExprBinary:

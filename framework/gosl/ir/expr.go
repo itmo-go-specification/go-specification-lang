@@ -42,6 +42,24 @@ type ExprVar struct {
 
 func (*ExprVar) exprNode() {}
 
+// ExprSelector represents field selection (value.Field).
+type ExprSelector struct {
+	BaseExpr
+	Expr  Expr
+	Field string
+}
+
+func (*ExprSelector) exprNode() {}
+
+// ExprIndex represents array, slice, or map indexing (value[index]).
+type ExprIndex struct {
+	BaseExpr
+	Expr  Expr
+	Index Expr
+}
+
+func (*ExprIndex) exprNode() {}
+
 // UnaryOp - unary-op ::= + | - | !
 type UnaryOp int
 

@@ -240,13 +240,14 @@ func convertCall(conv exprConverter, call *specir.ExprCall) ast.Expr {
 }
 
 func convertConditional(conv exprConverter, cond *specir.ExprConditional) ast.Expr {
+	resultType := conditionalResultType(cond.Then, cond.Else)
 	return &ast.CallExpr{
 		Fun: &ast.FuncLit{
 			Type: &ast.FuncType{
 				Params: &ast.FieldList{},
 				Results: &ast.FieldList{
 					List: []*ast.Field{
-						{Type: &ast.Ident{Name: "bool"}},
+						{Type: resultType},
 					},
 				},
 			},
@@ -273,4 +274,53 @@ func convertConditional(conv exprConverter, cond *specir.ExprConditional) ast.Ex
 			},
 		},
 	}
+}
+
+func conditionalResultType(thenExpr, elseExpr specir.Expr) ast.Expr {
+	thenType := inferredExprType(thenExpr)
+	elseType := inferredExprType(elseExpr)
+	if thenType != "" && thenType == elseType {
+		return &ast.Ident{Name: thenType}
+	}
+	// An interface result keeps mixed or currently unknown branch types valid
+	// for equality checks, while common scalar cases retain their concrete type.
+	return &ast.InterfaceType{Methods: &ast.FieldList{}}
+}
+
+func inferredExprType(expr specir.Expr) string {
+	switch e := expr.(type) {
+	case *specir.ExprLiteral:
+		switch e.Kind {
+		case specir.LitBool:
+			return "bool"
+		case specir.LitInteger:
+			return "int"
+		case specir.LitReal, specir.LitFloat:
+			return "float64"
+		case specir.LitString:
+			return "string"
+		}
+	case *specir.ExprUnary:
+		if e.Op == specir.UnaryNot {
+			return "bool"
+		}
+		return inferredExprType(e.Expr)
+	case *specir.ExprBinary:
+		switch e.Op {
+		case specir.OpEq, specir.OpNeq, specir.OpLe, specir.OpGe, specir.OpLt, specir.OpGt,
+			specir.OpAnd, specir.OpOr, specir.OpXor, specir.OpImplies:
+			return "bool"
+		default:
+			left := inferredExprType(e.Left)
+			if left == inferredExprType(e.Right) {
+				return left
+			}
+		}
+	case *specir.ExprConditional:
+		thenType := inferredExprType(e.Then)
+		if thenType == inferredExprType(e.Else) {
+			return thenType
+		}
+	}
+	return ""
 }

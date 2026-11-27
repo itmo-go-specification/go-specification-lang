@@ -66,7 +66,7 @@ func TestCheckAt_FalseCondition_ConsoleMode(t *testing.T) {
 
 	CheckAt(false, "test.go", 1, "console test")
 
-	w.Close()
+	_ = w.Close()
 	os.Stderr = oldStderr
 
 	buf := make([]byte, 4096)

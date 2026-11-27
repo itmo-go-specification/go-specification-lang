@@ -8,10 +8,10 @@ import (
 )
 
 func (b *ACSLBuilder) VisitAcsl_comment_logic_defs(ctx *acsl.Acsl_comment_logic_defsContext) interface{} {
-	log.Debugln("Visit_Acsl_comment_logic_defs text:", ctx.GetText())
 	if ctx == nil {
 		return nil
 	}
+	log.Debugln("Visit_Acsl_comment_logic_defs text:", ctx.GetText())
 
 	for _, def := range ctx.AllLogic_def() {
 		b.Visit(def)
@@ -71,10 +71,10 @@ func (b *ACSLBuilder) VisitLogic_function_def(ctx *acsl.Logic_function_defContex
 }
 
 func (b *ACSLBuilder) VisitLemma_def(ctx *acsl.Lemma_defContext) interface{} {
-	log.Debugln("VisitLemma_def text:", ctx.GetText())
 	if ctx == nil {
 		return nil
 	}
+	log.Debugln("VisitLemma_def text:", ctx.GetText())
 
 	name, ok := polyIDName(ctx.Poly_id())
 

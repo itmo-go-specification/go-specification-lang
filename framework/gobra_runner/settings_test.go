@@ -29,13 +29,19 @@ func TestBackendIsValid(t *testing.T) {
 
 func TestDefaultSettings(t *testing.T) {
 	// Clear environment variables before test
-	os.Unsetenv("GPMA_EXECUTION_BACKEND")
-	os.Unsetenv("GPMA_DOCKER_IMAGE")
-	os.Unsetenv("GPMA_JAVA_PATH")
-	os.Unsetenv("GPMA_GOBRA_JAR")
-	os.Unsetenv("GPMA_GOBRA_BACKEND")
-	os.Unsetenv("GPMA_TIMEOUT")
-	os.Unsetenv("GPMA_LOG_LEVEL")
+	for _, key := range []string{
+		"GPMA_EXECUTION_BACKEND",
+		"GPMA_DOCKER_IMAGE",
+		"GPMA_JAVA_PATH",
+		"GPMA_GOBRA_JAR",
+		"GPMA_GOBRA_BACKEND",
+		"GPMA_TIMEOUT",
+		"GPMA_LOG_LEVEL",
+	} {
+		if err := os.Unsetenv(key); err != nil {
+			t.Errorf("failed to unset %s: %v", key, err)
+		}
+	}
 
 	settings := DefaultSettings()
 
@@ -168,16 +174,22 @@ func TestDefaultSettingsWithEnvVars(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			// Clear all env vars first
-			os.Unsetenv("GPMA_EXECUTION_BACKEND")
-			os.Unsetenv("GPMA_DOCKER_IMAGE")
-			os.Unsetenv("GPMA_JAVA_PATH")
-			os.Unsetenv("GPMA_GOBRA_JAR")
-			os.Unsetenv("GPMA_GOBRA_BACKEND")
-			os.Unsetenv("GPMA_TIMEOUT")
-			os.Unsetenv("GPMA_LOG_LEVEL")
+			for _, key := range []string{
+				"GPMA_EXECUTION_BACKEND",
+				"GPMA_DOCKER_IMAGE",
+				"GPMA_JAVA_PATH",
+				"GPMA_GOBRA_JAR",
+				"GPMA_GOBRA_BACKEND",
+				"GPMA_TIMEOUT",
+				"GPMA_LOG_LEVEL",
+			} {
+				if err := os.Unsetenv(key); err != nil {
+					t.Errorf("failed to unset %s: %v", key, err)
+				}
+			}
 
 			// Set the specific env var for this test
-			os.Setenv(tt.envVar, tt.envValue)
+			t.Setenv(tt.envVar, tt.envValue)
 
 			// Get settings
 			settings := DefaultSettings()
@@ -187,7 +199,9 @@ func TestDefaultSettingsWithEnvVars(t *testing.T) {
 
 			// Cleanup
 			if tt.cleanupNeeded {
-				os.Unsetenv(tt.envVar)
+				if err := os.Unsetenv(tt.envVar); err != nil {
+					t.Errorf("failed to unset %s: %v", tt.envVar, err)
+				}
 			}
 		})
 	}
@@ -195,17 +209,23 @@ func TestDefaultSettingsWithEnvVars(t *testing.T) {
 
 func TestDefaultSettingsInvalidBackend(t *testing.T) {
 	// Clear all env vars first
-	os.Unsetenv("GPMA_EXECUTION_BACKEND")
-	os.Unsetenv("GPMA_DOCKER_IMAGE")
-	os.Unsetenv("GPMA_JAVA_PATH")
-	os.Unsetenv("GPMA_GOBRA_JAR")
-	os.Unsetenv("GPMA_GOBRA_BACKEND")
-	os.Unsetenv("GPMA_TIMEOUT")
-	os.Unsetenv("GPMA_LOG_LEVEL")
+	for _, key := range []string{
+		"GPMA_EXECUTION_BACKEND",
+		"GPMA_DOCKER_IMAGE",
+		"GPMA_JAVA_PATH",
+		"GPMA_GOBRA_JAR",
+		"GPMA_GOBRA_BACKEND",
+		"GPMA_TIMEOUT",
+		"GPMA_LOG_LEVEL",
+	} {
+		if err := os.Unsetenv(key); err != nil {
+			t.Errorf("failed to unset %s: %v", key, err)
+		}
+	}
 
 	// Set invalid backend
-	os.Setenv("GPMA_EXECUTION_BACKEND", "invalid")
-	defer os.Unsetenv("GPMA_EXECUTION_BACKEND")
+	// Set invalid backend
+	t.Setenv("GPMA_EXECUTION_BACKEND", "invalid")
 
 	settings := DefaultSettings()
 
@@ -217,17 +237,22 @@ func TestDefaultSettingsInvalidBackend(t *testing.T) {
 
 func TestDefaultSettingsInvalidTimeout(t *testing.T) {
 	// Clear all env vars first
-	os.Unsetenv("GPMA_EXECUTION_BACKEND")
-	os.Unsetenv("GPMA_DOCKER_IMAGE")
-	os.Unsetenv("GPMA_JAVA_PATH")
-	os.Unsetenv("GPMA_GOBRA_JAR")
-	os.Unsetenv("GPMA_GOBRA_BACKEND")
-	os.Unsetenv("GPMA_TIMEOUT")
-	os.Unsetenv("GPMA_LOG_LEVEL")
+	for _, key := range []string{
+		"GPMA_EXECUTION_BACKEND",
+		"GPMA_DOCKER_IMAGE",
+		"GPMA_JAVA_PATH",
+		"GPMA_GOBRA_JAR",
+		"GPMA_GOBRA_BACKEND",
+		"GPMA_TIMEOUT",
+		"GPMA_LOG_LEVEL",
+	} {
+		if err := os.Unsetenv(key); err != nil {
+			t.Errorf("failed to unset %s: %v", key, err)
+		}
+	}
 
 	// Set invalid timeout
-	os.Setenv("GPMA_TIMEOUT", "invalid")
-	defer os.Unsetenv("GPMA_TIMEOUT")
+	t.Setenv("GPMA_TIMEOUT", "invalid")
 
 	settings := DefaultSettings()
 

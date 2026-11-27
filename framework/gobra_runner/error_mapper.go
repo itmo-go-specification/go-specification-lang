@@ -26,7 +26,6 @@ func (m *ErrorMapper) MapError(raw rawError) VerificationError {
 		pos, err := m.mapping.MapErrorLineCol(raw.genLine, raw.genColumn, m.genCode)
 		if err == nil {
 			ve.Position = pos
-		} else {
 		}
 	}
 

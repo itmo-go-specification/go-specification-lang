@@ -229,7 +229,11 @@ func processFile(c *cli.Context) error {
 	if err != nil {
 		return cli.Exit(fmt.Sprintf("Failed to create error reporter: %v", err), 1)
 	}
-	defer reporter.Close()
+	defer func() {
+		if err := reporter.Close(); err != nil {
+			log.Printf("failed to close file: %v", err)
+		}
+	}()
 
 	sourceFile := c.Args().Get(0)
 	var outputFile string
@@ -306,8 +310,14 @@ func processFile(c *cli.Context) error {
 			if err != nil {
 				return cli.Exit(fmt.Sprintf("Failed to create output file: %v", err), 1)
 			}
-			defer out.Close()
-			fmt.Fprintln(out, result.GeneratedCode)
+			defer func() {
+				if err := out.Close(); err != nil {
+					log.Printf("failed to close file: %v", err)
+				}
+			}()
+			if _, err := fmt.Fprintln(out, result.GeneratedCode); err != nil {
+				return fmt.Errorf("failed to write output: %w", err)
+			}
 			fmt.Printf("Output written to: %s\n", outputFile)
 		} else {
 			fmt.Println("Generated code:")
@@ -420,7 +430,9 @@ func processProject(projectDir, outputDir string, pluginNames []string, pluginCo
 	if err != nil {
 		return cli.Exit(fmt.Sprintf("Failed to create error reporter: %v", err), 1)
 	}
-	defer reporter.Close()
+	defer func() {
+		_ = reporter.Close()
+	}()
 
 	overlay := make(map[string]string)
 

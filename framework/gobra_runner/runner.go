@@ -24,7 +24,9 @@ func (r *Runner) Verify(ctx context.Context, req VerificationRequest) (*Verifica
 	if err != nil {
 		return nil, fmt.Errorf("gobra_runner: write temp file: %w", err)
 	}
-	defer os.Remove(tmpFile)
+	defer func() {
+		_ = os.Remove(tmpFile)
+	}()
 
 	// Use provided context or create default one
 	if ctx == nil {
@@ -184,7 +186,7 @@ func (r *Runner) buildDockerCommand(ctx context.Context, inputFile string) (*exe
 		<-ctx.Done()
 		// Stop the container when context is cancelled
 		stopCmd := exec.Command("docker", "stop", containerName)
-		stopCmd.Run() // Ignore errors, container might not exist
+		_ = stopCmd.Run() // Ignore errors, container might not exist
 	}()
 
 	return cmd, nil
@@ -222,10 +224,12 @@ func writeTempFile(content string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	defer f.Close()
+	defer func() {
+		_ = f.Close()
+	}()
 
 	if _, err := f.WriteString(content); err != nil {
-		os.Remove(f.Name())
+		_ = os.Remove(f.Name())
 		return "", err
 	}
 	return f.Name(), nil

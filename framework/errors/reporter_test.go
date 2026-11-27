@@ -235,7 +235,7 @@ func TestErrorReporterImpl_SetPrinter(t *testing.T) {
 	reporter.SetPrinter(printer2)
 
 	// Report to second printer
-	reportErr = reporter.ReportError(testError)
+	err = reporter.ReportError(testError)
 	if err != nil {
 		t.Errorf("ErrorReporterImpl.ReportError() error = %v", err)
 		return
@@ -303,7 +303,9 @@ func TestNewErrorReporter(t *testing.T) {
 			}
 
 			if !tt.wantErr && reporter != nil {
-				reporter.Close()
+				if err := reporter.Close(); err != nil {
+					t.Errorf("failed to close reporter: %v", err)
+				}
 			}
 		})
 	}

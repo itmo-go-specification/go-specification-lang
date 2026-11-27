@@ -62,11 +62,13 @@ func main() {
 `,
 			mapping: func() *HybridMapping {
 				m := NewHybridMapping("test.go")
-				m.AddInterval(Interval{
-					GenStart:  20, // Offset in generated code
+				if err := m.AddInterval(Interval{
+					GenStart:  20,
 					GenEnd:    40,
-					SourcePos: SourcePosition{File: "test.go", Offset: 10}, // Offset in original code
-				})
+					SourcePos: SourcePosition{File: "test.go", Offset: 10},
+				}); err != nil {
+					t.Fatalf("AddInterval() failed: %v", err)
+				}
 				return m
 			}(),
 			expectError: false,
@@ -246,15 +248,18 @@ func TestRunner_buildCommand_Docker(t *testing.T) {
 			}
 
 			if err != nil {
-				t.Errorf("buildCommand() unexpected error = %v", err)
-				return
+				t.Fatalf("buildCommand() unexpected error = %v", err)
 			}
 
 			if cmd == nil {
-				t.Error("buildCommand() returned nil command")
+				t.Fatal("buildCommand() returned nil command")
 			}
 
 			// Check that Docker command is properly structured
+			if len(cmd.Args) == 0 {
+				t.Fatal("buildCommand() returned command with empty Args")
+			}
+
 			if cmd.Args[0] != "docker" {
 				t.Errorf("buildCommand() first arg = %v, want 'docker'", cmd.Args[0])
 			}
@@ -342,11 +347,13 @@ func TestMapErrorsWithHybrid(t *testing.T) {
 			},
 			mapping: func() *HybridMapping {
 				m := NewHybridMapping("")
-				m.AddInterval(Interval{
+				if err := m.AddInterval(Interval{
 					GenStart:  50, // Offset in generated code
 					GenEnd:    150,
 					SourcePos: SourcePosition{File: "test.go", Offset: 25}, // Offset in original code
-				})
+				}); err != nil {
+					t.Fatalf("AddInterval() failed: %v", err)
+				}
 				return m
 			}(),
 			wantLen: 1,

@@ -10,6 +10,7 @@ import (
 
 func applyContractPass(astData *data.ASTData, strictMode bool) bool {
 	modified := false
+	packageVars := collectPackageVariables(astData.File)
 
 	ast.Inspect(astData.File, func(n ast.Node) bool {
 		funcDecl, ok := n.(*ast.FuncDecl)
@@ -22,7 +23,7 @@ func applyContractPass(astData *data.ASTData, strictMode bool) bool {
 			return true
 		}
 
-		if applyContractToFunc(funcDecl, info.FuncContract, strictMode) {
+		if applyContractToFunc(funcDecl, info.FuncContract, packageVars, strictMode) {
 			modified = true
 		}
 
@@ -32,7 +33,7 @@ func applyContractPass(astData *data.ASTData, strictMode bool) bool {
 	return modified
 }
 
-func applyContractToFunc(funcDecl *ast.FuncDecl, contract *specir.FuncContract, strictMode bool) bool {
+func applyContractToFunc(funcDecl *ast.FuncDecl, contract *specir.FuncContract, packageVars []string, strictMode bool) bool {
 	conv := newContractConverter()
 
 	for _, ens := range contract.Ensures {
@@ -76,6 +77,8 @@ func applyContractToFunc(funcDecl *ast.FuncDecl, contract *specir.FuncContract, 
 			})
 		}
 	}
+
+	newStmts = append(newStmts, createAssignsChecks(contract, packageVars, preconditionsPassedVar)...)
 
 	for _, oldInfo := range conv.GetOldVars() {
 		newStmts = append(newStmts, &ast.AssignStmt{
@@ -151,4 +154,79 @@ func applyContractToFunc(funcDecl *ast.FuncDecl, contract *specir.FuncContract, 
 	}
 
 	return true
+}
+
+func collectPackageVariables(file *ast.File) []string {
+	var names []string
+	for _, decl := range file.Decls {
+		genDecl, ok := decl.(*ast.GenDecl)
+		if !ok || genDecl.Tok != token.VAR {
+			continue
+		}
+		for _, spec := range genDecl.Specs {
+			valueSpec, ok := spec.(*ast.ValueSpec)
+			if !ok {
+				continue
+			}
+			for _, name := range valueSpec.Names {
+				if name.Name != "_" {
+					names = append(names, name.Name)
+				}
+			}
+		}
+	}
+	return names
+}
+
+func createAssignsChecks(contract *specir.FuncContract, packageVars []string, guard *ast.Ident) []ast.Stmt {
+	if !contract.Assigns.Specified {
+		return nil
+	}
+
+	allowed := make(map[string]struct{}, len(contract.Assigns.Vars))
+	if contract.Assigns.Kind == specir.LocSetVars {
+		for _, name := range contract.Assigns.Vars {
+			allowed[name] = struct{}{}
+		}
+	}
+
+	var stmts []ast.Stmt
+	for _, name := range packageVars {
+		if _, ok := allowed[name]; ok {
+			continue
+		}
+
+		snapshotName := "__frame_" + name
+		stmts = append(stmts, &ast.AssignStmt{
+			Lhs: []ast.Expr{&ast.Ident{Name: snapshotName}},
+			Tok: token.DEFINE,
+			Rhs: []ast.Expr{&ast.Ident{Name: name}},
+		})
+
+		condition := &ast.CallExpr{
+			Fun: &ast.Ident{Name: "checks.Equal"},
+			Args: []ast.Expr{
+				&ast.Ident{Name: name},
+				&ast.Ident{Name: snapshotName},
+			},
+		}
+		check := ast.Stmt(&ast.ExprStmt{
+			X: createCheckCall(condition, "assigns", "", contract.StartPos),
+		})
+		if guard != nil {
+			check = &ast.IfStmt{
+				Cond: guard,
+				Body: &ast.BlockStmt{List: []ast.Stmt{check}},
+			}
+		}
+
+		stmts = append(stmts, &ast.DeferStmt{Call: &ast.CallExpr{
+			Fun: &ast.FuncLit{
+				Type: &ast.FuncType{Params: &ast.FieldList{}},
+				Body: &ast.BlockStmt{List: []ast.Stmt{check}},
+			},
+		}})
+	}
+
+	return stmts
 }

@@ -3,6 +3,7 @@ package check
 import (
 	"fmt"
 	"os"
+	"reflect"
 	"strings"
 	"time"
 )
@@ -21,6 +22,12 @@ var (
 	pathEnv     = "CHECK_LOG_PATH"
 	defaultMode = "panic"
 )
+
+// Equal compares frame-condition snapshots without requiring the values' Go
+// types to support the == operator.
+func Equal(left, right any) bool {
+	return reflect.DeepEqual(left, right)
+}
 
 // CheckAt reports a contract violation at the given source location
 // (file and line from the original annotated source, not the generated overlay).

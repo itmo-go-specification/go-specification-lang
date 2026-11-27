@@ -7,6 +7,15 @@ import (
 	"testing"
 )
 
+func TestEqualSupportsNonComparableValues(t *testing.T) {
+	if !Equal([]int{1, 2}, []int{1, 2}) {
+		t.Fatal("equal slices should compare equal")
+	}
+	if Equal([]int{1, 2}, []int{1, 3}) {
+		t.Fatal("different slices should not compare equal")
+	}
+}
+
 func TestCheckAt_TrueCondition_NoPanic(t *testing.T) {
 	t.Setenv(modeEnv, "panic")
 	CheckAt(true, "test", 1)

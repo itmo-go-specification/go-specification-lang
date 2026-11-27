@@ -65,23 +65,23 @@ func (b *ACSLBuilder) parseNamedPred(p acsl.IPredContext) specir.NamedPredicate 
 // assigns_clause -> LocationSet
 func (b *ACSLBuilder) VisitAssigns_clause(ctx *acsl.Assigns_clauseContext) interface{} {
 	if ctx == nil {
-		return specir.LocationSet{Kind: specir.LocSetNothing}
+		return specir.LocationSet{}
 	}
 	log.Debug("VisitAssigns_clause text:", ctx.GetText())
 	txt := ctx.GetText()
 
 	// \nothing
 	if strings.Contains(txt, `\nothing`) {
-		return specir.LocationSet{Kind: specir.LocSetNothing}
+		return specir.LocationSet{Kind: specir.LocSetNothing, Specified: true}
 	}
 
 	// collecting identifiers. TODO
 	vars := collectIdentifiers(ctx)
 	if len(vars) == 0 {
 		// fallback
-		return specir.LocationSet{Kind: specir.LocSetVars, Vars: []string{txt}}
+		return specir.LocationSet{Kind: specir.LocSetVars, Specified: true, Vars: []string{txt}}
 	}
-	return specir.LocationSet{Kind: specir.LocSetVars, Vars: unique(vars)}
+	return specir.LocationSet{Kind: specir.LocSetVars, Specified: true, Vars: unique(vars)}
 }
 
 // subtree walk and collecting Identifier tokens TODO

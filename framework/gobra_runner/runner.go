@@ -184,7 +184,7 @@ func (r *Runner) buildDockerCommand(ctx context.Context, inputFile string) (*exe
 		<-ctx.Done()
 		// Stop the container when context is cancelled
 		stopCmd := exec.Command("docker", "stop", containerName)
-		stopCmd.Run() // Ignore errors, container might not exist
+		_ = stopCmd.Run() // Ignore errors, container might not exist
 	}()
 
 	return cmd, nil

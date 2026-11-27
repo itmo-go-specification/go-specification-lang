@@ -406,10 +406,10 @@ func GenerateGobra(astData *data.ASTData, sourceFile string) (*GobraGenerationRe
 	}
 
 	for _, decl := range astData.File.Decls {
-		switch decl.(type) {
+		switch decl := decl.(type) {
 		case *ast.FuncDecl:
 			{
-				sourceResultSection := decl.(*ast.FuncDecl).Type.Results
+				sourceResultSection := decl.Type.Results
 				if sourceResultSection == nil {
 					continue
 				}
@@ -417,7 +417,7 @@ func GenerateGobra(astData *data.ASTData, sourceFile string) (*GobraGenerationRe
 				sourcePos := astData.FileSet.Position(sourceResultSection.Pos()).Offset
 				sourceEnd := astData.FileSet.Position(sourceResultSection.End()).Offset
 
-				namedResultsSection := g.nameAllResults(decl.(*ast.FuncDecl))
+				namedResultsSection := g.nameAllResults(decl)
 
 				g.AddReplacement(sourcePos, sourceEnd, namedResultsSection, nil)
 			}

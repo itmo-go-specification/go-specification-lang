@@ -333,7 +333,7 @@ func (d LogicDecl) MarshalJSON() ([]byte, error) {
 		Params     []LogicParam  `json:"params,omitempty"`
 		ResultType TypeExpr      `json:"resultType"`
 		Body       *exprJSON     `json:"body,omitempty"`
-		ClauseKind ClauseKind    `json:"clauseKind,omitempty`
+		ClauseKind ClauseKind    `json:"clauseKind,omitempty"`
 		Span       Span          `json:"span,omitempty"`
 	}
 	return json.Marshal(alias{

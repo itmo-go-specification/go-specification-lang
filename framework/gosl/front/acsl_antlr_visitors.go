@@ -65,10 +65,10 @@ func (b *ACSLBuilder) parseNamedPred(p acsl.IPredContext) specir.NamedPredicate 
 
 // assigns_clause -> LocationSet
 func (b *ACSLBuilder) VisitAssigns_clause(ctx *acsl.Assigns_clauseContext) interface{} {
-	log.Debug("VisitAssigns_clause text:", ctx.GetText())
 	if ctx == nil {
 		return specir.LocationSet{Kind: specir.LocSetNothing}
 	}
+	log.Debug("VisitAssigns_clause text:", ctx.GetText())
 	txt := ctx.GetText()
 
 	// \nothing
@@ -100,9 +100,7 @@ func collectIdentifiers(t antlr.Tree) []string {
 			}
 		}
 		for i := 0; i < n.GetChildCount(); i++ {
-			if c, ok := n.GetChild(i).(antlr.Tree); ok {
-				walk(c)
-			}
+			walk(n.GetChild(i))
 		}
 	}
 	walk(t)

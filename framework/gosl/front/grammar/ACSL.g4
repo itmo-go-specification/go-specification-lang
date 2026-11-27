@@ -29,7 +29,7 @@ import C;
 id
     : Identifier
     ;
-string_literal
+string
     : StringLiteral+
     ;
 
@@ -39,7 +39,7 @@ literal
     | '\\false'                                         # false_constant
     // let's use C classes
     | Constant                                          # trivial_constant
-    | string_literal                                    # string_constant
+    | string                                            # string_constant
     ;
 
 unary_op
@@ -74,7 +74,7 @@ term
     | 'sizeof' '(' term ')'                             # sizeof_term
     | 'sizeof' '(' typeName ')'                         # sizeof_type_term
     | id ':' term                                       # syntactic_naming_term
-    | string_literal ':' term                           # syntactic_naming_term
+    | string ':' term                                   # syntactic_naming_term
 // oldandresult.tex
     | '\\old' '(' term ')'                              # old_term
     | '\\result'                                        # result_term
@@ -125,7 +125,7 @@ pred
     | '\\forall' binders ';' pred       # universal_quantification_pred
     | '\\exists' binders ';' pred       # existential_quantification_pred
     | id ':' pred                       # syntactic_naming_pred
-    | string_literal ':' pred           # syntactic_naming_pred
+    | string ':' pred                   # syntactic_naming_pred
 // oldandresult.tex
     | '\\old' '(' pred ')'              # old_pred
 // loc.tex
@@ -140,9 +140,9 @@ pred
     | '\\valid_read'  one_label? '(' location_address ')'           # valid_read_pred
     | '\\separated' '(' location_address ',' location_addresses ')' # separated_pred
 // own additions:
-    | '\\tagged' '(' location ',' string_literal ')'                # tagged_pred
+    | '\\tagged' '(' location ',' string ')'                        # tagged_pred
     | '\\context_tagged' '(' strings ')'                            # context_tagged_pred
-    | '\\report' '(' pred ',' string_literal ')'                    # report_pred
+    | '\\report' '(' pred ',' string ')'                            # report_pred
 // end of own additions
     ;
 
@@ -250,17 +250,17 @@ simple_clause
 
 // Author's additions: 'report pre failure as' clause
 report_pre_failure_clause
-    : 'report' 'pre' 'failure' 'as' string_literal ';'
+    : 'report' 'pre' 'failure' 'as' string ';'
     ;
 
 // Author's additions: 'report post failure as' clause
 report_post_failure_clause
-    : 'report' 'post' 'failure' 'as' string_literal ';'
+    : 'report' 'post' 'failure' 'as' string ';'
     ;
 
 // Author's additions: 'report match as' clause
 report_match_clause
-    : 'report' 'match' 'as' string_literal ';'
+    : 'report' 'match' 'as' string ';'
     ;
 
 // Author's additions: report * clause
@@ -331,11 +331,11 @@ tagged_clause
 
 // Author's additions: 'tags' clause
 tags_clause
-    : 'tags' string_literal '->' location ';'
+    : 'tags' string '->' location ';'
     ;
 
 strings
-    : string_literal (',' string_literal)*
+    : string (',' string)*
     ;
 
 locations

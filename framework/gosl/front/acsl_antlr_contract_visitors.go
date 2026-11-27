@@ -58,10 +58,11 @@ func (b *ACSLBuilder) VisitSimple_clause(ctx *acsl.Simple_clauseContext) interfa
 
 // requires_clause / ensures_clause -> NamedPredicate
 func (b *ACSLBuilder) VisitRequires_clause(ctx *acsl.Requires_clauseContext) interface{} {
-	log.Debugln("VisitRequires_clause text:", ctx.GetText())
 	if ctx == nil {
 		return nil
 	}
+	log.Debugln("VisitRequires_clause text:", ctx.GetText())
+
 	np := b.parseNamedPred(ctx.Pred())
 	// StartPos/EndPos span the entire "requires <pred>;" clause.
 	np.StartPos, np.EndPos = b.blockPositions(ctx)
@@ -69,10 +70,11 @@ func (b *ACSLBuilder) VisitRequires_clause(ctx *acsl.Requires_clauseContext) int
 }
 
 func (b *ACSLBuilder) VisitEnsures_clause(ctx *acsl.Ensures_clauseContext) interface{} {
-	log.Debugln("VisitEnsures_clause text:", ctx.GetText())
 	if ctx == nil {
 		return nil
 	}
+	log.Debugln("VisitEnsures_clause text:", ctx.GetText())
+
 	np := b.parseNamedPred(ctx.Pred())
 	// StartPos/EndPos span the entire "ensures <pred>;" clause.
 	np.StartPos, np.EndPos = b.blockPositions(ctx)

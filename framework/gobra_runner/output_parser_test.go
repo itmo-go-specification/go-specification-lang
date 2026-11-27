@@ -89,11 +89,13 @@ func TestMapErrors_withMapping(t *testing.T) {
 
 	// Add an interval that maps a section in generated code to source code
 	// The generated code has "x := 1" starting at offset 28
-	mapping.AddInterval(Interval{
+	if err := mapping.AddInterval(Interval{
 		GenStart:  28,                                         // Start of "x := 1"
 		GenEnd:    35,                                         // End of "x := 1"
 		SourcePos: SourcePosition{File: "abs.go", Offset: 20}, // Maps to offset 20 in source
-	})
+	}); err != nil {
+		t.Fatalf("AddInterval() failed: %v", err)
+	}
 
 	// Create an error at line 4, column 3 (which is the "x" in "x := 1")
 	raw := []rawError{

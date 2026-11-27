@@ -30,6 +30,10 @@ func TestBindFuncContracts(t *testing.T) {
 
 		blocks := front.CollectRawBlocks(astData.FileSet, astData.File, astData.FileSet.File(astData.File.Pos()).Name())
 		spec, err := front.BuildSpecModule(blocks)
+		if err != nil {
+			t.Fatalf("Failed to build spec module in file %s: %v", filename, err)
+		}
+
 		astData, err = Bind(astData, spec)
 
 		if err != nil {
@@ -65,7 +69,11 @@ func TestBindFuncContracts(t *testing.T) {
 
 		blocks := front.CollectRawBlocks(astData.FileSet, astData.File, astData.FileSet.File(astData.File.Pos()).Name())
 		spec, err := front.BuildSpecModule(blocks)
-		astData, err = Bind(astData, spec)
+		if err != nil {
+			t.Fatalf("Failed to build spec module in file %s: %v", filename, err)
+		}
+
+		_, err = Bind(astData, spec)
 
 		if err == nil {
 			t.Fatalf("Binded invalid spec modules in file %s", filename)
@@ -95,6 +103,10 @@ func TestBindLoopSpecs(t *testing.T) {
 
 		blocks := front.CollectRawBlocks(astData.FileSet, astData.File, astData.FileSet.File(astData.File.Pos()).Name())
 		spec, err := front.BuildSpecModule(blocks)
+		if err != nil {
+			t.Fatalf("Failed to build spec module in file %s: %v", filename, err)
+		}
+
 		astData, err = Bind(astData, spec)
 
 		if err != nil {
@@ -130,8 +142,11 @@ func TestBindLoopSpecs(t *testing.T) {
 
 		blocks := front.CollectRawBlocks(astData.FileSet, astData.File, astData.FileSet.File(astData.File.Pos()).Name())
 		spec, err := front.BuildSpecModule(blocks)
-		astData, err = Bind(astData, spec)
+		if err != nil {
+			t.Fatalf("Failed to build spec module in file %s: %v", filename, err)
+		}
 
+		_, err = Bind(astData, spec)
 		if err == nil {
 			t.Fatalf("Binded invalid spec modules in file %s", filename)
 		}
@@ -160,8 +175,11 @@ func TestBindAssertSpecs(t *testing.T) {
 
 		blocks := front.CollectRawBlocks(astData.FileSet, astData.File, astData.FileSet.File(astData.File.Pos()).Name())
 		spec, err := front.BuildSpecModule(blocks)
-		astData, err = Bind(astData, spec)
+		if err != nil {
+			t.Fatalf("Failed to build spec module in file %s: %v", filename, err)
+		}
 
+		astData, err = Bind(astData, spec)
 		if err != nil {
 			t.Fatalf("Failed to bind spec modules in file %s: %v", filename, err)
 		}

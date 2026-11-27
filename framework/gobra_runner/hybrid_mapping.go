@@ -134,7 +134,7 @@ func (h *HybridMapping) MapError(offset int) (SourcePosition, error) {
 	// Ensure we don't return negative offsets
 	if originalOffset < 0 {
 		panic("impossible negative offset")
-		originalOffset = 0
+
 	}
 
 	return SourcePosition{

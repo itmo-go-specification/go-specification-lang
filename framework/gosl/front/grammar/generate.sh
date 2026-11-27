@@ -1,7 +1,11 @@
-#!/bin/sh
+#!/bin/bash
+set -e
 
-alias antlr4='java -Xmx500M -cp "antlr-4.13.1-complete.jar:$CLASSPATH" org.antlr.v4.Tool'
-antlr4 -Dlanguage=Go -visitor -package grammar ACSL.g4 -o ../generated/grammar/acsl
-antlr4 -Dlanguage=Go -visitor -package grammar C.g4 -o ../generated/grammar/c
+cd "$(dirname "$0")"
 
+ANTLR_JAR="antlr-4.13.1-complete.jar"
+ANTLR_ARGS=(-Xmx500M -cp "$ANTLR_JAR" org.antlr.v4.Tool -Dlanguage=Go -visitor -package grammar)
 
+for grammar in ACSL C; do
+    java "${ANTLR_ARGS[@]}" "$grammar.g4" -o "../generated/grammar/${grammar,,}"
+done

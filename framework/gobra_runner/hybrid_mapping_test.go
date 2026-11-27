@@ -1,6 +1,7 @@
 package gobra_runner
 
 import (
+	"fmt"
 	"testing"
 )
 
@@ -231,8 +232,12 @@ func TestHybridMapping_AddInterval_Overlap(t *testing.T) {
 		SourcePos: SourcePosition{File: "source.go", Offset: 10},
 	}
 
-	mapping.AddInterval(interval1)
-	err := mapping.AddInterval(interval2)
+	err := mapping.AddInterval(interval1)
+	if err == nil {
+		t.Errorf("AddInterval() expected error for overlapping intervals, got nil")
+	}
+
+	err = mapping.AddInterval(interval2)
 
 	if err == nil {
 		t.Errorf("AddInterval() expected error for overlapping intervals, got nil")
@@ -242,23 +247,29 @@ func TestHybridMapping_AddInterval_Overlap(t *testing.T) {
 func TestHybridMapping_AutoSort(t *testing.T) {
 	mapping := NewHybridMapping("")
 
-	mapping.AddInterval(Interval{
-		GenStart:  30,
-		GenEnd:    40,
-		SourcePos: SourcePosition{File: "source.go", Offset: 15},
-	})
+	intervals := []Interval{
+		{
+			GenStart:  30,
+			GenEnd:    40,
+			SourcePos: SourcePosition{File: "source.go", Offset: 15},
+		},
+		{
+			GenStart:  10,
+			GenEnd:    20,
+			SourcePos: SourcePosition{File: "source.go", Offset: 5},
+		},
+		{
+			GenStart:  22,
+			GenEnd:    28,
+			SourcePos: SourcePosition{File: "source.go", Offset: 10},
+		},
+	}
 
-	mapping.AddInterval(Interval{
-		GenStart:  10,
-		GenEnd:    20,
-		SourcePos: SourcePosition{File: "source.go", Offset: 5},
-	})
-
-	mapping.AddInterval(Interval{
-		GenStart:  22,
-		GenEnd:    28,
-		SourcePos: SourcePosition{File: "source.go", Offset: 10},
-	})
+	for _, interval := range intervals {
+		if err := mapping.AddInterval(interval); err != nil {
+			t.Fatalf("AddInterval(%+v) unexpected error: %v", interval, err)
+		}
+	}
 
 	// Intervals should be automatically sorted
 	if len(mapping.Replacements) != 3 {
@@ -279,21 +290,19 @@ func TestHybridMapping_OverlapDetection(t *testing.T) {
 	t.Run("valid_non_overlapping", func(t *testing.T) {
 		mapping := NewHybridMapping("")
 
-		err := mapping.AddInterval(Interval{
+		if err := mapping.AddInterval(Interval{
 			GenStart:  10,
 			GenEnd:    20,
 			SourcePos: SourcePosition{File: "source.go", Offset: 5},
-		})
-		if err != nil {
+		}); err != nil {
 			t.Errorf("AddInterval() error = %v", err)
 		}
 
-		err = mapping.AddInterval(Interval{
+		if err := mapping.AddInterval(Interval{
 			GenStart:  30,
 			GenEnd:    40,
 			SourcePos: SourcePosition{File: "source.go", Offset: 15},
-		})
-		if err != nil {
+		}); err != nil {
 			t.Errorf("AddInterval() error = %v", err)
 		}
 	})
@@ -301,19 +310,19 @@ func TestHybridMapping_OverlapDetection(t *testing.T) {
 	t.Run("overlapping_intervals", func(t *testing.T) {
 		mapping := NewHybridMapping("")
 
-		mapping.AddInterval(Interval{
+		if err := mapping.AddInterval(Interval{
 			GenStart:  10,
 			GenEnd:    20,
 			SourcePos: SourcePosition{File: "source.go", Offset: 5},
-		})
+		}); err != nil {
+			t.Fatalf("AddInterval failed: %v", err)
+		}
 
-		err := mapping.AddInterval(Interval{
+		if err := mapping.AddInterval(Interval{
 			GenStart:  15,
 			GenEnd:    25,
 			SourcePos: SourcePosition{File: "source.go", Offset: 10},
-		})
-
-		if err == nil {
+		}); err == nil {
 			t.Errorf("AddInterval() expected error for overlapping intervals, got nil")
 		}
 	})
@@ -322,17 +331,21 @@ func TestHybridMapping_OverlapDetection(t *testing.T) {
 func TestHybridMapping_FindInterval(t *testing.T) {
 	mapping := NewHybridMapping("")
 
-	mapping.AddInterval(Interval{
+	if err := mapping.AddInterval(Interval{
 		GenStart:  30,
 		GenEnd:    40,
 		SourcePos: SourcePosition{File: "source.go", Offset: 15},
-	})
+	}); err != nil {
+		t.Fatalf("AddInterval failed: %v", err)
+	}
 
-	mapping.AddInterval(Interval{
+	if err := mapping.AddInterval(Interval{
 		GenStart:  10,
 		GenEnd:    20,
 		SourcePos: SourcePosition{File: "source.go", Offset: 5},
-	})
+	}); err != nil {
+		t.Fatalf("AddInterval failed: %v", err)
+	}
 
 	tests := []struct {
 		name     string
@@ -409,23 +422,29 @@ func TestHybridMapping_FindPointMapping(t *testing.T) {
 func TestHybridMapping_GetTotalAdditionsBefore(t *testing.T) {
 	mapping := NewHybridMapping("")
 
-	mapping.AddInterval(Interval{
-		GenStart:  30,
-		GenEnd:    35,
-		SourcePos: SourcePosition{File: "source.go", Offset: 15},
-	})
+	intervals := []Interval{
+		{
+			GenStart:  30,
+			GenEnd:    35,
+			SourcePos: SourcePosition{File: "source.go", Offset: 15},
+		},
+		{
+			GenStart:  10,
+			GenEnd:    15,
+			SourcePos: SourcePosition{File: "source.go", Offset: 5},
+		},
+		{
+			GenStart:  20,
+			GenEnd:    25,
+			SourcePos: SourcePosition{File: "source.go", Offset: 10},
+		},
+	}
 
-	mapping.AddInterval(Interval{
-		GenStart:  10,
-		GenEnd:    15,
-		SourcePos: SourcePosition{File: "source.go", Offset: 5},
-	})
-
-	mapping.AddInterval(Interval{
-		GenStart:  20,
-		GenEnd:    25,
-		SourcePos: SourcePosition{File: "source.go", Offset: 10},
-	})
+	for _, interval := range intervals {
+		if err := mapping.AddInterval(interval); err != nil {
+			t.Fatalf("AddInterval(%+v) failed: %v", interval, err)
+		}
+	}
 
 	tests := []struct {
 		name string
@@ -459,11 +478,14 @@ func TestHybridMapping_MapError(t *testing.T) {
 			name: "error in predicate with point mapping",
 			mapping: func() *HybridMapping {
 				h := NewHybridMapping("")
-				h.AddInterval(Interval{
+				if err := h.AddInterval(Interval{
 					GenStart:  10,
 					GenEnd:    15,
 					SourcePos: SourcePosition{File: "source.go", Offset: 5},
-				})
+				}); err != nil {
+					panic(fmt.Sprintf("failed to add test interval: %v", err))
+				}
+
 				h.AddPointMapping(PointMapping{
 					GenOffset: 12,
 					Orig:      SourcePosition{File: "source.go", Offset: 5},
@@ -477,7 +499,7 @@ func TestHybridMapping_MapError(t *testing.T) {
 			name: "error in addition with predicate span",
 			mapping: func() *HybridMapping {
 				h := NewHybridMapping("")
-				h.AddInterval(Interval{
+				if err := h.AddInterval(Interval{
 					GenStart:  10,
 					GenEnd:    15,
 					SourcePos: SourcePosition{File: "source.go", Offset: 5},
@@ -485,7 +507,9 @@ func TestHybridMapping_MapError(t *testing.T) {
 						File:   "source.go",
 						Offset: 20,
 					},
-				})
+				}); err != nil {
+					panic(fmt.Sprintf("failed to add test interval: %v", err))
+				}
 				return h
 			}(),
 			offset:  12,
@@ -495,11 +519,13 @@ func TestHybridMapping_MapError(t *testing.T) {
 			name: "error in addition without point mapping or predicate span",
 			mapping: func() *HybridMapping {
 				h := NewHybridMapping("")
-				h.AddInterval(Interval{
+				if err := h.AddInterval(Interval{
 					GenStart:  10,
 					GenEnd:    15,
 					SourcePos: SourcePosition{File: "source.go", Offset: 5},
-				})
+				}); err != nil {
+					panic(fmt.Sprintf("failed to add test interval: %v", err))
+				}
 				return h
 			}(),
 			offset:  12,
@@ -509,11 +535,13 @@ func TestHybridMapping_MapError(t *testing.T) {
 			name: "error in original code before additions",
 			mapping: func() *HybridMapping {
 				h := NewHybridMapping("")
-				h.AddInterval(Interval{
+				if err := h.AddInterval(Interval{
 					GenStart:  10,
 					GenEnd:    15,
 					SourcePos: SourcePosition{File: "source.go", Offset: 5},
-				})
+				}); err != nil {
+					t.Fatalf("AddInterval failed: %v", err)
+				}
 				return h
 			}(),
 			offset:  5,
@@ -523,11 +551,13 @@ func TestHybridMapping_MapError(t *testing.T) {
 			name: "error in original code after additions",
 			mapping: func() *HybridMapping {
 				h := NewHybridMapping("")
-				h.AddInterval(Interval{
+				if err := h.AddInterval(Interval{
 					GenStart:  10,
 					GenEnd:    15,
 					SourcePos: SourcePosition{File: "source.go", Offset: 5},
-				})
+				}); err != nil {
+					t.Fatalf("AddInterval failed: %v", err)
+				}
 				return h
 			}(),
 			offset:  20,

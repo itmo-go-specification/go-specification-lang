@@ -89,6 +89,23 @@ ensures (*p == \old(*q)) && (*q == \old(*p));
 func swap(p *int, q *int) { ... }
 ```
 
+#### Именованные `behavior`
+
+Клаузы внутри behavior проверяются только когда истинны все его `assumes`:
+
+```go
+/*@
+behavior positive:
+    assumes x > 0;
+    requires x < limit;
+    ensures \result > 0;
+*/
+func bounded(x, limit int) int { ... }
+```
+
+`assumes` вычисляются при входе в функцию. Поддерживаются локальные
+`requires` и `ensures`; behavior без `assumes` считается активным всегда.
+
 #### `assigns` — список изменяемых переменных
 
 Синтаксис поддерживается парсером, но плагин `dynamic_checks` его **игнорирует** — клауза предназначена для других плагинов:

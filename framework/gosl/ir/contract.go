@@ -31,6 +31,19 @@ type LocationSet struct {
 	Vars []string // if Kind == LocSetVars. Ex: assigns i, counted;
 }
 
+// Behavior is a named function-contract case guarded by its assumes clauses.
+type Behavior struct {
+	Name     string   `json:"name"`
+	Span     Span     `json:"span,omitempty"`
+	StartPos Position `json:"startPos,omitempty"`
+	EndPos   Position `json:"endPos,omitempty"`
+
+	Assumes  []NamedPredicate `json:"assumes,omitempty"`
+	Requires []NamedPredicate `json:"requires,omitempty"`
+	Ensures  []NamedPredicate `json:"ensures,omitempty"`
+	Assigns  LocationSet      `json:"assigns"`
+}
+
 // ===== GOSL (ACSL) Contract type =====
 // requires valid: \valid_read(a + (0..n-1));
 // ensures bound: 0 <= \result <= n;
@@ -47,8 +60,9 @@ type FuncContract struct {
 	StartPos Position
 	EndPos   Position
 
-	Requires []NamedPredicate
-	Ensures  []NamedPredicate
+	Requires  []NamedPredicate
+	Ensures   []NamedPredicate
+	Behaviors []Behavior
 
 	// assigns locations. Ex: assigns \nothing;
 	Assigns LocationSet

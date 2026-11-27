@@ -60,7 +60,10 @@ jobs:
       - name: Generate ACSL parser
         if: matrix.modules == 'framework'
         working-directory: framework
-        run: bash gosl/front/grammar/generate.sh
+        run: |
+          bash gosl/front/grammar/generate.sh
+          test -f gosl/front/generated/grammar/acsl/acsl_parser.go
+          find gosl/front/generated/grammar/acsl -maxdepth 1 -type f -print
       - name: golangci-lint ${{ matrix.modules }}
         uses: golangci/golangci-lint-action@v9
         with:

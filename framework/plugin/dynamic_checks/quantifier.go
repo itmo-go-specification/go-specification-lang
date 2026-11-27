@@ -51,14 +51,22 @@ func extractForallRange(conv exprConverter, body specir.Expr, varName string) *r
 	if !ok || impl.Op != specir.OpImplies {
 		return nil
 	}
-	lo, hi := extractBounds(impl.Left, varName)
+	lo, hi, remaining := splitBounds(impl.Left, varName)
 	if lo == nil || hi == nil {
 		return nil
+	}
+	predicate := impl.Right
+	if len(remaining) > 0 {
+		predicate = &specir.ExprBinary{
+			Op:    specir.OpImplies,
+			Left:  joinAnd(remaining),
+			Right: predicate,
+		}
 	}
 	return &rangeInfo{
 		lo:   conv.Convert(lo),
 		hi:   conv.Convert(hi),
-		body: conv.Convert(impl.Right),
+		body: conv.Convert(predicate),
 	}
 }
 
@@ -69,19 +77,58 @@ func extractForallRange(conv exprConverter, body specir.Expr, varName string) *r
 // where guard encodes the range of the bound variable.
 // Returns nil if the pattern is not recognised.
 func extractExistsRange(conv exprConverter, body specir.Expr, varName string) *rangeInfo {
-	and, ok := body.(*specir.ExprBinary)
-	if !ok || and.Op != specir.OpAnd {
-		return nil
-	}
-	lo, hi := extractBounds(and.Left, varName)
+	lo, hi, remaining := splitBounds(body, varName)
 	if lo == nil || hi == nil {
 		return nil
+	}
+	predicate := joinAnd(remaining)
+	if predicate == nil {
+		predicate = &specir.ExprLiteral{Kind: specir.LitBool, Bool: true}
 	}
 	return &rangeInfo{
 		lo:   conv.Convert(lo),
 		hi:   conv.Convert(hi),
-		body: conv.Convert(and.Right),
+		body: conv.Convert(predicate),
 	}
+}
+
+// splitBounds flattens conjunctions, consumes one lower and one upper bound,
+// and returns every other condition in its original order.
+func splitBounds(expr specir.Expr, varName string) (lo, hi specir.Expr, remaining []specir.Expr) {
+	for _, term := range flattenAnd(expr) {
+		if lo == nil {
+			if bound := extractLowerBound(term, varName); bound != nil {
+				lo = bound
+				continue
+			}
+		}
+		if hi == nil {
+			if bound := extractUpperBound(term, varName); bound != nil {
+				hi = bound
+				continue
+			}
+		}
+		remaining = append(remaining, term)
+	}
+	return lo, hi, remaining
+}
+
+func flattenAnd(expr specir.Expr) []specir.Expr {
+	if and, ok := expr.(*specir.ExprBinary); ok && and.Op == specir.OpAnd {
+		return append(flattenAnd(and.Left), flattenAnd(and.Right)...)
+	}
+	return []specir.Expr{expr}
+}
+
+func joinAnd(exprs []specir.Expr) specir.Expr {
+	if len(exprs) == 0 {
+		return nil
+	}
+	result := exprs[0]
+	for _, expr := range exprs[1:] {
+		result = &specir.ExprBinary{Op: specir.OpAnd, Left: result, Right: expr}
+	}
+	return result
 }
 
 // extractBounds tries to parse a guard expression of the form:
@@ -93,19 +140,9 @@ func extractExistsRange(conv exprConverter, body specir.Expr, varName string) *r
 //
 // Returns (lo, hi) as IR Expr nodes, or (nil, nil) if the pattern is not matched.
 func extractBounds(guard specir.Expr, varName string) (lo, hi specir.Expr) {
-	// Case: lo <= i && i < hi  OR  lo <= i && i <= hi
-	if and, ok := guard.(*specir.ExprBinary); ok && and.Op == specir.OpAnd {
-		loExpr := extractLowerBound(and.Left, varName)
-		hiExpr := extractUpperBound(and.Right, varName)
-		if loExpr != nil && hiExpr != nil {
-			return loExpr, hiExpr
-		}
-		// Try reversed order: i < hi && lo <= i
-		loExpr = extractLowerBound(and.Right, varName)
-		hiExpr = extractUpperBound(and.Left, varName)
-		if loExpr != nil && hiExpr != nil {
-			return loExpr, hiExpr
-		}
+	loExpr, hiExpr, _ := splitBounds(guard, varName)
+	if loExpr != nil && hiExpr != nil {
+		return loExpr, hiExpr
 	}
 
 	// Case: i < hi  (no lower bound — default to 0)
@@ -127,6 +164,9 @@ func extractLowerBound(expr specir.Expr, varName string) specir.Expr {
 		if isVar(bin.Right, varName) {
 			return bin.Left
 		}
+	}
+	if bin.Op == specir.OpGe && isVar(bin.Left, varName) {
+		return bin.Right
 	}
 	return nil
 }
@@ -150,6 +190,20 @@ func extractUpperBound(expr specir.Expr, varName string) specir.Expr {
 			return &specir.ExprBinary{
 				Op:    specir.OpAdd,
 				Left:  bin.Right,
+				Right: &specir.ExprLiteral{Kind: specir.LitInteger, Int: 1},
+			}
+		}
+	case specir.OpGt:
+		// hi > i
+		if isVar(bin.Right, varName) {
+			return bin.Left
+		}
+	case specir.OpGe:
+		// hi >= i  →  treat upper bound as hi+1
+		if isVar(bin.Right, varName) {
+			return &specir.ExprBinary{
+				Op:    specir.OpAdd,
+				Left:  bin.Left,
 				Right: &specir.ExprLiteral{Kind: specir.LitInteger, Int: 1},
 			}
 		}

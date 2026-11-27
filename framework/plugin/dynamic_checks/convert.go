@@ -129,6 +129,12 @@ func convertExpr(conv exprConverter, expr specir.Expr) ast.Expr {
 		return convertCall(conv, e)
 	case *specir.ExprConditional:
 		return convertConditional(conv, e)
+	case *specir.ExprSetMembership:
+		return convertSetMembership(conv, e)
+	case *specir.ExprSetSubset:
+		return convertSetSubset(conv, e)
+	case *specir.ExprSet:
+		panic("finite set literals are only valid in membership and subset predicates")
 	case *specir.ExprQuantifier:
 		return convertQuantifier(conv, e)
 	case *specir.ExprOld:
@@ -138,6 +144,56 @@ func convertExpr(conv exprConverter, expr specir.Expr) ast.Expr {
 	default:
 		panic(fmt.Sprintf("unsupported expression type: %T", expr))
 	}
+}
+
+func convertSetMembership(conv exprConverter, membership *specir.ExprSetMembership) ast.Expr {
+	set, ok := membership.Set.(*specir.ExprSet)
+	if !ok {
+		panic("dynamic_checks only supports membership in finite set literals")
+	}
+	if len(set.Elements) == 0 {
+		return &ast.Ident{Name: "false"}
+	}
+
+	var condition ast.Expr
+	for _, candidate := range set.Elements {
+		equal := &ast.BinaryExpr{
+			X:  conv.Convert(membership.Element),
+			Op: token.EQL,
+			Y:  conv.Convert(candidate),
+		}
+		if condition == nil {
+			condition = equal
+		} else {
+			condition = &ast.BinaryExpr{X: condition, Op: token.LOR, Y: equal}
+		}
+	}
+	return condition
+}
+
+func convertSetSubset(conv exprConverter, subset *specir.ExprSetSubset) ast.Expr {
+	left, leftOK := subset.Left.(*specir.ExprSet)
+	right, rightOK := subset.Right.(*specir.ExprSet)
+	if !leftOK || !rightOK {
+		panic("dynamic_checks only supports subset checks between finite set literals")
+	}
+	if len(left.Elements) == 0 {
+		return &ast.Ident{Name: "true"}
+	}
+
+	var condition ast.Expr
+	for _, element := range left.Elements {
+		membership := convertSetMembership(conv, &specir.ExprSetMembership{
+			Element: element,
+			Set:     right,
+		})
+		if condition == nil {
+			condition = membership
+		} else {
+			condition = &ast.BinaryExpr{X: condition, Op: token.LAND, Y: membership}
+		}
+	}
+	return condition
 }
 
 func convertLiteral(lit *specir.ExprLiteral) ast.Expr {

@@ -141,6 +141,36 @@ func marshalExpr(e Expr) (*exprJSON, error) {
 			Then: th,
 			Else: el,
 		}, nil
+	case *ExprSet:
+		elements := make([]*exprJSON, 0, len(t.Elements))
+		for _, element := range t.Elements {
+			encoded, err := marshalExpr(element)
+			if err != nil {
+				return nil, err
+			}
+			elements = append(elements, encoded)
+		}
+		return &exprJSON{Kind: "set", Span: t.GetSpan(), Args: elements}, nil
+	case *ExprSetMembership:
+		element, err := marshalExpr(t.Element)
+		if err != nil {
+			return nil, err
+		}
+		set, err := marshalExpr(t.Set)
+		if err != nil {
+			return nil, err
+		}
+		return &exprJSON{Kind: "membership", Span: t.GetSpan(), Left: element, Right: set}, nil
+	case *ExprSetSubset:
+		left, err := marshalExpr(t.Left)
+		if err != nil {
+			return nil, err
+		}
+		right, err := marshalExpr(t.Right)
+		if err != nil {
+			return nil, err
+		}
+		return &exprJSON{Kind: "subset", Span: t.GetSpan(), Left: left, Right: right}, nil
 	case *ExprResult:
 		return &exprJSON{
 			Kind: "result",
@@ -250,6 +280,36 @@ func unmarshalExpr(j *exprJSON) (Expr, error) {
 			Then:     th,
 			Else:     el,
 		}, nil
+	case "set":
+		elements := make([]Expr, 0, len(j.Args))
+		for _, encoded := range j.Args {
+			element, err := unmarshalExpr(encoded)
+			if err != nil {
+				return nil, err
+			}
+			elements = append(elements, element)
+		}
+		return &ExprSet{BaseExpr: BaseExpr{Span: j.Span}, Elements: elements}, nil
+	case "membership":
+		element, err := unmarshalExpr(j.Left)
+		if err != nil {
+			return nil, err
+		}
+		set, err := unmarshalExpr(j.Right)
+		if err != nil {
+			return nil, err
+		}
+		return &ExprSetMembership{BaseExpr: BaseExpr{Span: j.Span}, Element: element, Set: set}, nil
+	case "subset":
+		left, err := unmarshalExpr(j.Left)
+		if err != nil {
+			return nil, err
+		}
+		right, err := unmarshalExpr(j.Right)
+		if err != nil {
+			return nil, err
+		}
+		return &ExprSetSubset{BaseExpr: BaseExpr{Span: j.Span}, Left: left, Right: right}, nil
 	case "result":
 		return &ExprResult{
 			BaseExpr: BaseExpr{Span: j.Span},
